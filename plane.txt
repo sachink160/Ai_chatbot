@@ -1,0 +1,21 @@
+1. Authentications
+2. Rag System
+3. Create Agent With multiple tools likwe
+    1. Youtube tool
+    2. Weadher serch tool - (Done)
+    3. Google search (TaveliSearch) - (Done)
+    4. Powerbi toolkit
+    5. Finance tool
+    6. Zapiear tool
+    7. Database tools
+    8. Calaender meeting tool
+    9. wekipidia tool - (Done)
+    10. Send mail tool - (Done)
+
+
+
+ImportanceQuestions 
+
+1. What is SGI (sever Gate way interface)
+
+    - it is establise two way communiction beetwen webserver and api code
