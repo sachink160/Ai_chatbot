@@ -167,11 +167,14 @@ def sum(a: int, b: int) -> int:
     """Sum or Add two numbers."""
     return a + b
 
+
+
 total_tool = [weather_search, sum, multiply, send_email, google_search, youtube_search, wikipedia]
 
 tool_node = ToolNode(total_tool)
 
 model = init_chat_model(model="openai:gpt-4o")
+# model = init_chat_model(model="ollama:llama3")
 model_with_tools = model.bind_tools(total_tool)
 
 def should_continue(state: MessagesState):

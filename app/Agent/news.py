@@ -1,6 +1,7 @@
 from datetime import datetime
 from langgraph.graph import StateGraph, END
-from langchain_openai import ChatOpenAI
+# from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain.prompts import PromptTemplate
 from twilio.rest import Client
 import requests
@@ -21,7 +22,8 @@ FROM_WHATSAPP = os.getenv("FROM_WHATSAPP") or "whatsapp:+14155238886"
 CATEGORIES = ["technology", "business", "health", "science", "sports"]
 
 # === LLM ===
-llm = ChatOpenAI(model="gpt-4", temperature=0.7)
+llm = ChatOllama(model="llama3.2", temperature=0.7)
+# llm = ChatOpenAI(model="gpt-4", temperature=0.7)
 
 
 

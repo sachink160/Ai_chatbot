@@ -32,5 +32,11 @@ class Question(BaseModel):
     question: str
 
 
+class Question_r(BaseModel):
+    document_id: str
+    question: str = ""
+    prompt_type: str = "summarize"
+    custom_query: str = ""
+
 class Hr_Question(BaseModel):
     question: str

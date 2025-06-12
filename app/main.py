@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     # Startup tasks
     # scheduler.add_job(run_news_agent, 'interval', seconds=15, max_instances=2)
     # scheduler.add_job(run_news_agent, 'interval', minutes=1, max_instances=2)
-    scheduler.add_job(run_news_agent, 'interval', hours=1, max_instances=2)
+    scheduler.add_job(run_news_agent, 'interval', hours=10, max_instances=2)
 
     scheduler.start()
 
