@@ -13,6 +13,10 @@ from datetime import datetime
 from app.comman import generate_google_meet_link
 from app.utils import get_youtube_title, get_youtube_transcript, get_youtube_video_id, summarize_text_with_llm
 
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+
+from typing import Annotated, List
 import os
 import requests
 import django
@@ -22,6 +26,117 @@ django.setup()
 load_dotenv()
 
 api_key="a4d3a866d5e23fb6477575896d4043ee"
+
+FOURSQUARE_API_KEY = ""
+
+def search_places(query, near, category):
+    url = "https://api.foursquare.com/v3/places/search"
+    headers = {"Authorization": FOURSQUARE_API_KEY}
+    params = {
+        "query": query,
+        "near": near,
+        "categories": category,
+        "limit": 3
+    }
+    resp = requests.get(url, headers=headers, params=params)
+    if resp.status_code == 200:
+        data = resp.json()
+        results = []
+        for place in data.get("results", []):
+            name = place.get("name")
+            address = ", ".join(place.get("location", {}).get("formatted_address", []))
+            rating = place.get("rating", "N/A")
+            results.append(f"{name} ({address}) - Rating: {rating}")
+        return results
+    else:
+        return [f"API error: {resp.status_code}"]
+
+def trip_planner_tool(input: str) -> str:
+    """
+    Plans a trip for a given destination and date using live data.
+    Input format: 'destination, date'
+    """
+    try:
+        destination, date = [x.strip() for x in input.split(",")]
+    except Exception:
+        return "Please provide input as 'destination, date' (e.g., 'Paris, 2024-08-15')."
+
+    # Dynamic search
+    sights = search_places("tourist attraction", destination, "16000")  # Foursquare category for sights
+    eats = search_places("restaurant", destination, "13065")            # Foursquare category for restaurants
+    hotels = search_places("hotel", destination, "19014")               # Foursquare category for hotels
+
+    plan = f"""Trip Plan for {destination} on {date}:
+
+1. 🏞️ **Places to Visit:**
+   - {chr(10).join(sights)}
+
+2. 🍽️ **Eating:**
+   - {chr(10).join(eats)}
+
+3. 🏨 **Staying:**
+   - {chr(10).join(hotels)}
+
+*All results are live from Foursquare. Prices and reviews may vary.*
+"""
+    return plan
+
+
+def smart_scrape_updates(
+    urls: Annotated[List[str], "List of base URLs (e.g., website homepages)"],
+    keywords: Annotated[List[str], "Keywords like blog, news, product to look for internally"]
+) -> str:
+    """
+    Scrape the latest content updates from one or more websites based on relevant internal links.
+
+    This tool searches each provided base URL for internal hyperlinks that contain specified keywords
+    such as 'blog', 'news', or 'product'. It then visits those internal pages and extracts the title,
+    the first <h1> tag, and a paragraph summary to provide quick, high-level insights.
+
+    Parameters:
+        urls (List[str]): A list of base website URLs to scan (e.g., 'https://www.simform.com').
+        keywords (List[str]): A list of keyword strings to match internal links (e.g., ['blog', 'news']).
+
+    Returns:
+        str: A formatted text summary of the top matched pages per site, including the page URL,
+                title, heading, and paragraph. If no matches are found or scraping fails, error messages are included.
+    """
+    updates = []
+
+    for base_url in urls:
+        try:
+            res = requests.get(base_url, timeout=10)
+            res.raise_for_status()
+            soup = BeautifulSoup(res.text, "html.parser")
+
+            # Step 1: Find matching internal links
+            internal_links = []
+            for a in soup.find_all("a", href=True):
+                href = a["href"]
+                full_url = urljoin(base_url, href)
+                if any(kw.lower() in href.lower() for kw in keywords):
+                    internal_links.append(full_url)
+
+            unique_links = list(set(internal_links))[:3]  # Limit to 3 per site
+
+            # Step 2: Scrape title, h1, and paragraph from each matching page
+            for link in unique_links:
+                try:
+                    r = requests.get(link, timeout=10)
+                    r.raise_for_status()
+                    page = BeautifulSoup(r.text, "html.parser")
+                    title = page.title.string.strip() if page.title else "No title"
+                    h1 = page.find("h1")
+                    p = page.find("p")
+                    updates.append(f"🔗 {link}\n📌 {title}\n📝 {h1.get_text(strip=True) if h1 else ''}\n📄 {p.get_text(strip=True) if p else ''}")
+                except Exception as e:
+                    updates.append(f"❌ Failed to scrape {link}: {e}")
+        
+        except Exception as e:
+            updates.append(f"❌ Error accessing {base_url}: {e}")
+
+    return "\n\n---\n\n".join(updates) if updates else "No updates found."
+
 
 def youtube_search(url: str) -> str:
     """
@@ -169,7 +284,7 @@ def sum(a: int, b: int) -> int:
 
 
 
-total_tool = [weather_search, sum, multiply, send_email, google_search, youtube_search, wikipedia]
+total_tool = [weather_search, sum, multiply, send_email, google_search, youtube_search, wikipedia, smart_scrape_updates]
 
 tool_node = ToolNode(total_tool)
 
