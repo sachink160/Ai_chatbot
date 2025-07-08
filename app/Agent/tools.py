@@ -182,6 +182,7 @@ def google_search(query: str) -> str:
     
     search = TavilySearchResults(max_results=2)
     return search.invoke({"query": query})
+
 def weather_search(location: str) -> str:
     """
     Retrieve the current weather information for a specified location.
@@ -284,7 +285,7 @@ def sum(a: int, b: int) -> int:
 
 
 
-total_tool = [weather_search, sum, multiply, send_email, google_search, youtube_search, wikipedia, smart_scrape_updates]
+total_tool = [weather_search, sum, multiply, send_email, google_search, youtube_search, wikipedia, smart_scrape_updates, trip_planner_tool]
 
 tool_node = ToolNode(total_tool)
 

@@ -17,7 +17,7 @@ scheduler = AsyncIOScheduler()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup tasks
-    # scheduler.add_job(run_news_agent, 'interval', seconds=15, max_instances=2)
+    # scheduler.add_job(run_news_agent, 'interval', seconds=40, max_instances=2)
     # scheduler.add_job(run_news_agent, 'interval', minutes=1, max_instances=2)
     scheduler.add_job(run_news_agent, 'interval', hours=10, max_instances=2)
 
@@ -39,6 +39,7 @@ app.include_router(user_routes.router)
 app.include_router(rag_rout.router)
 app.include_router(tools_rout.router)
 app.include_router(hr_rout.router)
+# app.include_router(social_media_rout.router)
 
 
 
