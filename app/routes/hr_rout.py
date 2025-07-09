@@ -81,7 +81,7 @@ def activate_document(
 
 
 @router.post("/ask")
-def ask_question(
+async def ask_question(
     body: schemas.Hr_Question,
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
@@ -101,29 +101,17 @@ def ask_question(
             document_id=active_doc.id
         )
 
-        # query_engine = index.as_query_engine(
-        #     similarity_top_k=5,
-        #     response_mode="compact"
-        # )
-
         query_engine = index.as_query_engine(
             similarity_top_k=5,
-            response_mode="tree_summarize",  # Better summarization
+            response_mode="tree_summarize",  # summary-based answer
             use_async=True
         )
-        
-        response = query_engine.query(body.question)
 
-        # return {
-        #     "question": body.question,
-        #     "answer": str(response),
-        #     "document": active_doc.filename
-        # }
-        
+        response = await query_engine.aquery(body.question)  # Use `await` + `aquery`
+
         return {
             "question": body.question,
             "answer": str(response),
-            # "source_nodes": [n.node.get_content() for n in response.source_nodes],
             "document": active_doc.filename
         }
 
