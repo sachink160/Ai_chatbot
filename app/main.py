@@ -52,6 +52,11 @@ app.add_middleware(
     allow_headers=["*"],  # Or ["Authorization", "Content-Type"]
 )
 
+# @app.get("/profile", tags=["Profile"])
+# def get_profile(current_user: str = Depends(get_current_user)):
+#     return {"message": "Welcome", "user": current_user}
+
+
 @app.get("/profile", tags=["Profile"])
-def get_profile(current_user: str = Depends(get_current_user)):
-    return {"message": "Welcome", "user": current_user}
+def get_profile(current_user: dict = Depends(get_current_user)):
+    return current_user
