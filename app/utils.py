@@ -21,13 +21,18 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from dotenv import load_dotenv
 load_dotenv()
 
+from app.logger import get_logger
+logger = get_logger(__name__)
+
 
 HR_UPLOAD_DIR = "hr_docs"
 INDEX_BASE_DIR = "storage"
 
 # Genral use 
 def get_storage_path(user_id: int, document_id: int) -> str:
-    return os.path.join(INDEX_BASE_DIR, f"user_{user_id}", f"doc_{document_id}")
+    path = os.path.join(INDEX_BASE_DIR, f"user_{user_id}", f"doc_{document_id}")
+    logger.debug(f"Generated storage path: {path}")
+    return path
 
 
 def load_or_create_index(filepath: str, user_id: int, document_id: int) -> VectorStoreIndex:
@@ -43,11 +48,13 @@ def load_or_create_index(filepath: str, user_id: int, document_id: int) -> Vecto
 
     if os.path.exists(storage_dir) and os.listdir(storage_dir):
         storage_context = StorageContext.from_defaults(persist_dir=storage_dir)
+        logger.info(f"Loading index from storage for user {user_id}, doc {document_id}")
         return load_index_from_storage(storage_context, llm=llama_llm)
 
     documents = SimpleDirectoryReader(input_files=[filepath]).load_data()
     index = VectorStoreIndex.from_documents(documents, llm=llama_llm)
     index.storage_context.persist(persist_dir=storage_dir)
+    logger.info(f"Created and persisted new index for user {user_id}, doc {document_id}")
     return index
 
 
@@ -72,21 +79,28 @@ def get_youtube_video_id(url: str) -> str:
     for pattern in patterns:
         match = re.search(pattern, url)
         if match:
+            logger.debug(f"Extracted YouTube video ID: {match.group(1)} from URL: {url}")
             return match.group(1)
+    logger.error(f"Invalid YouTube URL: {url}")
     raise ValueError("Invalid YouTube URL")
 
 def get_youtube_title(video_id: str) -> str:
     oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
     resp = requests.get(oembed_url)
     if resp.status_code == 200:
-        return resp.json().get("title", "")
+        title = resp.json().get("title", "")
+        logger.info(f"Fetched YouTube title: {title} for video ID: {video_id}")
+        return title
+    logger.warning(f"Failed to fetch YouTube title for video ID: {video_id}")
     return ""
 
 def get_youtube_transcript(video_id: str) -> str:
     try:
         transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        logger.info(f"Fetched transcript for video ID: {video_id}")
         return " ".join([x['text'] for x in transcript])
     except (TranscriptsDisabled, NoTranscriptFound):
+        logger.warning(f"Transcript not available for video ID: {video_id}")
         return "Transcript not available for this video."
 
 def summarize_text_with_llm(text: str) -> str:
@@ -99,6 +113,7 @@ def summarize_text_with_llm(text: str) -> str:
         f"{text}\n\nSummary:"
     )
     response = llm.invoke(prompt)
+    logger.info("Summarized YouTube transcript with LLM.")
     return response.content.strip()
 
 

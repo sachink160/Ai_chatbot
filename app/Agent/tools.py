@@ -29,6 +29,9 @@ api_key="a4d3a866d5e23fb6477575896d4043ee"
 
 FOURSQUARE_API_KEY = ""
 
+from app.logger import get_logger
+logger = get_logger(__name__)
+
 def search_places(query, near, category):
     url = "https://api.foursquare.com/v3/places/search"
     headers = {"Authorization": FOURSQUARE_API_KEY}
@@ -38,8 +41,9 @@ def search_places(query, near, category):
         "categories": category,
         "limit": 3
     }
-    resp = requests.get(url, headers=headers, params=params)
-    if resp.status_code == 200:
+    try:
+        resp = requests.get(url, headers=headers, params=params)
+        resp.raise_for_status()
         data = resp.json()
         results = []
         for place in data.get("results", []):
@@ -47,9 +51,11 @@ def search_places(query, near, category):
             address = ", ".join(place.get("location", {}).get("formatted_address", []))
             rating = place.get("rating", "N/A")
             results.append(f"{name} ({address}) - Rating: {rating}")
+        logger.info(f"Found {len(results)} places for {query} in {near}")
         return results
-    else:
-        return [f"API error: {resp.status_code}"]
+    except Exception as e:
+        logger.error(f"API error for {query} in {near}: {e}")
+        return [f"API error: {e}"]
 
 def trip_planner_tool(input: str) -> str:
     """

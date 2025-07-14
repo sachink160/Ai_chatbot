@@ -17,6 +17,8 @@ from llama_index.llms.langchain import LangChainLLM
 from langchain_openai import ChatOpenAI
 # from llama_index import Settings  # New usage
 from llama_index.core.settings import Settings
+from app.logger import get_logger
+logger = get_logger(__name__)
 
 load_dotenv()
 

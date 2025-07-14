@@ -8,6 +8,8 @@ from langchain_core.messages import ToolMessage
 from app.Agent.tools import graph
 from datetime import datetime, timezone
 from app import models, database, auth
+from app.logger import get_logger
+logger = get_logger(__name__)
 
 
 router = APIRouter(tags=["Ai ChatBot"])
@@ -19,7 +21,7 @@ async def chat(
     current_user: models.User = Depends(auth.get_current_user),
     db: Session = Depends(database.get_db)
 ):
-    
+    logger.info(f"Received chat request from user {current_user.id}: {query}")
     try:
         # V1
         # import pdb
@@ -46,7 +48,7 @@ async def chat(
 
         result_messages = response["messages"]
         # Extract tool names
-        tool_used = [msg.name for msg in result_messages if isinstance(msg, ToolMessage)]
+        tool_used = [msg.name for msg in result_messages if hasattr(msg, 'name')]
             
         # Save chat history
         chat_entry = models.ChatHistory(
@@ -59,8 +61,10 @@ async def chat(
         )
         db.add(chat_entry)
         db.commit()
+        logger.info(f"Saved chat history for user {current_user.id}")
         return {"response": response["messages"][-1].content}
     except Exception as e:
+        logger.error(f"Error in chat endpoint for user {current_user.id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/chat/history")

@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from app.logger import get_logger
+logger = get_logger(__name__)
 
 scheduler = AsyncIOScheduler()
 

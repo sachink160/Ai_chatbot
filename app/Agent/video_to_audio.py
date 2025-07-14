@@ -3,6 +3,8 @@ import shutil
 import subprocess
 import sys
 import imageio_ffmpeg
+from app.logger import get_logger
+logger = get_logger(__name__)
 
 # Use imageio-ffmpeg to get the ffmpeg executable path
 ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
@@ -41,12 +43,23 @@ def process_video(input_path: str, user_id: str, filename: str):
     output_video = os.path.join(processed_dir, f"{base}_720p.mp4")
     output_audio = os.path.join(processed_dir, f"{base}_audio.mp3")
 
-    subprocess.run([
-        ffmpeg_path, '-i', input_path, '-t', '10', '-vf', 'scale=1280:720', output_video
-    ], check=True)
-    subprocess.run([
-        ffmpeg_path, '-i', input_path, '-q:a', '0', '-map', 'a', output_audio
-    ], check=True)
+    try:
+        subprocess.run([
+            ffmpeg_path, '-i', input_path, '-t', '10', '-vf', 'scale=1280:720', output_video
+        ], check=True)
+        logger.info(f"Video processing successful for user {user_id}: {filename}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Video processing failed for user {user_id}: {filename}. Error: {e}")
+        raise
+
+    try:
+        subprocess.run([
+            ffmpeg_path, '-i', input_path, '-q:a', '0', '-map', 'a', output_audio
+        ], check=True)
+        logger.info(f"Audio processing successful for user {user_id}: {filename}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Audio processing failed for user {user_id}: {filename}. Error: {e}")
+        raise
     return output_video, output_audio
 
 def get_processed_file(user_id: str, filename: str):

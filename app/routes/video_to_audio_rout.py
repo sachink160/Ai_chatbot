@@ -6,6 +6,8 @@ import subprocess
 import os
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from app.logger import get_logger
+logger = get_logger(__name__)
 
 router = APIRouter(tags=["Video to Audio"])
 

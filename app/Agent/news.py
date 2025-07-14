@@ -8,6 +8,8 @@ import requests
 import os
 from dotenv import load_dotenv
 from typing import TypedDict, Dict, List
+from app.logger import get_logger
+logger = get_logger(__name__)
 
 # === Load environment variables ===
 load_dotenv()

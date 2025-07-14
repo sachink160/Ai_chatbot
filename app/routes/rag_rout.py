@@ -8,6 +8,8 @@ from langchain_openai import ChatOpenAI
 
 from llama_index.llms.langchain import LangChainLLM
 from langchain_ollama import ChatOllama
+from app.logger import get_logger
+logger = get_logger(__name__)
 router = APIRouter(tags=["Rag Talk with Documents"])
 
 UPLOAD_DIR = "docs"

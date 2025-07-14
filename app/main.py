@@ -8,6 +8,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.Agent.news import run_news_agent
+from app.logger import get_logger
+logger = get_logger(__name__)
 
 scheduler = AsyncIOScheduler()
 
@@ -17,19 +19,14 @@ scheduler = AsyncIOScheduler()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup tasks
-    # scheduler.add_job(run_news_agent, 'interval', seconds=40, max_instances=2)
-    # scheduler.add_job(run_news_agent, 'interval', minutes=1, max_instances=2)
     scheduler.add_job(run_news_agent, 'interval', hours=10, max_instances=2)
-
+    # scheduler.add_job(run_news_agent, 'interval', hours=10, max_instances=2)
     scheduler.start()
-
-    print("Scheduler started.")
-    
+    logger.info("Scheduler started.")
     yield  # App is running
-
     # Shutdown tasks
     scheduler.shutdown()
-    print("Scheduler stopped.")
+    logger.info("Scheduler stopped.")
 
 
 Base.metadata.create_all(bind=engine)

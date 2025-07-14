@@ -5,6 +5,8 @@ from app.Agent import hr_tools
 import os
 from uuid import uuid4
 from llama_index.core import load_index_from_storage
+from app.logger import get_logger
+logger = get_logger(__name__)
 
 router = APIRouter(
     tags=["Hr Rag Documents"],
