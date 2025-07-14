@@ -235,14 +235,20 @@ def send_email(to: str, subject: str, body: str, meeting_time: str = None, meet_
         str: Confirmation or error message.
     """
     try:
-        # If it's a meeting and no link is provided, generate one
-        if meeting_time and not meet_link:
+        # Detect if this is a meeting request by keywords
+        is_meeting = any(word in (subject + body).lower() for word in ["meet", "meeting", "google meet"])
+        # Try to extract meeting time from body if not provided
+        if not meeting_time and is_meeting:
+            import re
+            match = re.search(r'(\d{1,2}(:\d{2})?\s*(am|pm))', body, re.IGNORECASE)
+            if match:
+                meeting_time = match.group(0)
+        # Always generate a meet link for meetings
+        if is_meeting and not meet_link:
             meet_link = generate_google_meet_link()
-        
         full_body = body
-        if meeting_time and meet_link:
-            full_body += f"\n\n📅 Meeting Schedule:\nDate & Time: {meeting_time}\n\n🔗 Join Google Meet:\n{meet_link}\n"
-
+        if is_meeting and meet_link:
+            full_body += f"\n\n📅 Meeting Schedule:\nDate & Time: {meeting_time or 'N/A'}\n\n🔗 Join Google Meet:\n{meet_link}\n"
         send_mail(
             subject,
             full_body,
@@ -250,7 +256,6 @@ def send_email(to: str, subject: str, body: str, meeting_time: str = None, meet_
             [to],
             fail_silently=False,
         )
-
         log_meeting(to, subject, meeting_time, meet_link)
         return f"✅ Email sent to {to} with subject '{subject}' and meeting scheduled at {meeting_time or 'N/A'}"
     except Exception as e:
