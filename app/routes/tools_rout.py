@@ -22,7 +22,16 @@ async def chat(
     
     try:
         # V1
-        response = graph.invoke({"messages": [{"role": "user", "content": query}]})
+        # import pdb
+        # pdb.set_trace()
+        
+        config = {"configurable": {"thread_id": str(current_user.id)}}
+        # response = graph.invoke({"messages": [{"role": "user", "content": query}]})
+        response = graph.invoke(
+            {"messages": [{"role": "user", "content": query}]},
+            config,
+            stream_mode="values"
+            )
         
         # V2
         # config = {"configurable": {"thread_id": f"{current_user.id}"}}

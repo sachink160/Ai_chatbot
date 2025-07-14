@@ -288,26 +288,18 @@ def sum(a: int, b: int) -> int:
 total_tool = [weather_search, sum, multiply, send_email, google_search, youtube_search, wikipedia, smart_scrape_updates, trip_planner_tool]
 
 tool_node = ToolNode(total_tool)
-
-model = init_chat_model(model="openai:gpt-4o")
-# model = init_chat_model(model="ollama:llama3")
+model = init_chat_model(model="openai:gpt-3.5-turbo")
+# model = init_chat_model(model="openai:gpt-4o")
 model_with_tools = model.bind_tools(total_tool)
 
 def should_continue(state: MessagesState):
-    messages = state["messages"]
-    last_message = messages[-1]
-    if last_message.tool_calls:
-        return "tools"
-    return END
+    last_msg = state["messages"][-1]
+    return "tools" if last_msg.tool_calls else END
 
 def call_model(state: MessagesState):
-    messages = state["messages"]
-    response = model_with_tools.invoke(messages)
-    return {"messages": [response]}
+    return {"messages": [model_with_tools.invoke(state["messages"])]}
 
 builder = StateGraph(MessagesState)
-
-# Define the two nodes we will cycle between
 builder.add_node("call_model", call_model)
 builder.add_node("tools", tool_node)
 
@@ -315,7 +307,6 @@ builder.add_edge(START, "call_model")
 builder.add_conditional_edges("call_model", should_continue, ["tools", END])
 builder.add_edge("tools", "call_model")
 
-# memory = MemorySaver()
-graph = builder.compile()
-# memory = MemorySaver()
-# graph = builder.compile(checkpointer=memory)
+memory = MemorySaver()  # ✅ Enables memory/summarization
+# graph = builder.compile()
+graph = builder.compile(checkpointer=memory)
