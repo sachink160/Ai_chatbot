@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends
-from app.routes import user_routes, rag_rout, tools_rout, hr_rout, video_to_audio_rout
+from app.routes import user_routes, rag_rout, tools_rout, hr_rout, video_to_audio_rout, subscription_rout
 from app.database import Base, engine
 from app.auth import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,6 +23,18 @@ async def lifespan(app: FastAPI):
     # scheduler.add_job(run_news_agent, 'interval', hours=10, max_instances=2)
     scheduler.start()
     logger.info("Scheduler started.")
+    
+    # Initialize subscription plans
+    try:
+        from app.subscription_service import SubscriptionService
+        from app.database import SessionLocal
+        db = SessionLocal()
+        SubscriptionService.create_subscription_plans(db)
+        db.close()
+        logger.info("Subscription plans initialized.")
+    except Exception as e:
+        logger.error(f"Failed to initialize subscription plans: {e}")
+    
     yield  # App is running
     # Shutdown tasks
     scheduler.shutdown()
@@ -37,6 +49,7 @@ app.include_router(rag_rout.router)
 app.include_router(tools_rout.router)
 app.include_router(hr_rout.router)
 app.include_router(video_to_audio_rout.router)
+app.include_router(subscription_rout.router)
 # app.include_router(social_media_rout.router)
 
 
@@ -49,11 +62,4 @@ app.add_middleware(
     allow_headers=["*"],  # Or ["Authorization", "Content-Type"]
 )
 
-# @app.get("/profile", tags=["Profile"])
-# def get_profile(current_user: str = Depends(get_current_user)):
-#     return {"message": "Welcome", "user": current_user}
-
-
-@app.get("/profile", tags=["Profile"])
-def get_profile(current_user: dict = Depends(get_current_user)):
-    return current_user
+# Profile endpoint moved to user_routes.py

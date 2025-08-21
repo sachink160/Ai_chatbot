@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey, Integer
+from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Boolean, Float
 import json
 from sqlalchemy import Column, String
 from sqlalchemy.types import TypeDecorator
@@ -17,9 +17,13 @@ class User(Base):
     phone = Column(String)
     user_type = Column(String)
     password = Column(String)
+    is_subscribed = Column(Boolean, default=False)
+    subscription_end_date = Column(DateTime, nullable=True)
     documents = relationship("Document", back_populates="owner")  # Add this line
     hrdocuments = relationship("Hr_Document", back_populates="owner", cascade="all, delete-orphan")  # Add this line
     chat_history = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
+    subscription = relationship("UserSubscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    usage = relationship("UsageTracking", back_populates="user", cascade="all, delete-orphan")
 
 class OutstandingToken(Base):
     __tablename__ = "outstanding_tokens"
@@ -78,3 +82,48 @@ class Hr_Document(Base):
     user_id = Column(String, ForeignKey("users.id"))
     is_active = Column(Integer, default=0)  # 0 = inactive, 1 = active
     owner = relationship("User", back_populates="hrdocuments")
+
+class SubscriptionPlan(Base):
+    __tablename__ = "subscription_plans"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String, unique=True, index=True)
+    price = Column(Float)
+    duration_days = Column(Integer)
+    max_chats_per_month = Column(Integer)
+    max_documents = Column(Integer)
+    max_hr_documents = Column(Integer)
+    max_video_uploads = Column(Integer)
+    features = Column(String)  # JSON string of features
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class UserSubscription(Base):
+    __tablename__ = "user_subscriptions"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    plan_id = Column(String, ForeignKey("subscription_plans.id"))
+    start_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime)
+    status = Column(String, default="active")  # active, expired, cancelled
+    payment_status = Column(String, default="pending")  # pending, completed, failed
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="subscription")
+    plan = relationship("SubscriptionPlan")
+
+class UsageTracking(Base):
+    __tablename__ = "usage_tracking"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    month_year = Column(String)  # Format: "2024-01"
+    chats_used = Column(Integer, default=0)
+    documents_uploaded = Column(Integer, default=0)
+    hr_documents_uploaded = Column(Integer, default=0)
+    video_uploads = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User", back_populates="usage")

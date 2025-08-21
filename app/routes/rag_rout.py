@@ -17,14 +17,36 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload")
 def upload_file(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
+    # Check subscription limits
+    from app.subscription_service import SubscriptionService
+    doc_check = SubscriptionService.can_upload_document(current_user, db)
+    
+    if not doc_check["can_use"]:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Document upload limit reached. You have uploaded {doc_check['documents_uploaded']}/{doc_check['max_documents']} documents this month. Please upgrade your subscription for more uploads."
+        )
+    
     filename = f"{uuid4()}_{file.filename}"
     path = os.path.join(UPLOAD_DIR, filename)
     with open(path, "wb") as f:
         f.write(file.file.read())
     doc = models.Document(filename=filename, path=path, owner=current_user, user_id=current_user.id)
     db.add(doc)
+    
+    # Increment usage
+    SubscriptionService.increment_document_usage(current_user, db)
+    
     db.commit()
-    return {"message": "File uploaded", "document_id": doc.id}
+    return {
+        "message": "File uploaded", 
+        "document_id": doc.id,
+        "usage": {
+            "documents_uploaded": doc_check["documents_uploaded"] + 1,
+            "max_documents": doc_check["max_documents"],
+            "remaining": doc_check["remaining"] - 1
+        }
+    }
 
 
 @router.get("/documents")

@@ -20,14 +20,38 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @router.post("/upload")
 def upload_file(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
     try:
+        # Check subscription limits
+        from app.subscription_service import SubscriptionService
+        hr_doc_check = SubscriptionService.can_upload_hr_document(current_user, db)
+        
+        if not hr_doc_check["can_use"]:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"HR document upload limit reached. You have uploaded {hr_doc_check['hr_documents_uploaded']}/{hr_doc_check['max_hr_documents']} HR documents this month. Please upgrade your subscription for more uploads."
+            )
+        
         filename = f"{uuid4()}_{file.filename}"
         path = os.path.join(UPLOAD_DIR, filename)
         with open(path, "wb") as f:
             f.write(file.file.read())
         doc = models.Hr_Document(filename=filename, path=path, owner=current_user, user_id=current_user.id)
         db.add(doc)
+        
+        # Increment usage
+        SubscriptionService.increment_hr_document_usage(current_user, db)
+        
         db.commit()
-        return {"message": "Hr File uploaded", "document_id": doc.id}
+        return {
+            "message": "Hr File uploaded", 
+            "document_id": doc.id,
+            "usage": {
+                "hr_documents_uploaded": hr_doc_check["hr_documents_uploaded"] + 1,
+                "max_hr_documents": hr_doc_check["max_hr_documents"],
+                "remaining": hr_doc_check["remaining"] - 1
+            }
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
 

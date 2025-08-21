@@ -22,32 +22,26 @@ async def chat(
     db: Session = Depends(database.get_db)
 ):
     logger.info(f"Received chat request from user {current_user.id}: {query}")
+    
+    # Check subscription limits
+    from app.subscription_service import SubscriptionService
+    chat_check = SubscriptionService.can_use_chat(current_user, db)
+    
+    if not chat_check["can_use"]:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Chat limit reached. You have used {chat_check['chats_used']}/{chat_check['max_chats']} chats this month. Please upgrade your subscription for more chats."
+        )
+    
     try:
-        # V1
-        # import pdb
-        # pdb.set_trace()
-        
         config = {"configurable": {"thread_id": str(current_user.id)}}
-        # response = graph.invoke({"messages": [{"role": "user", "content": query}]})
         response = graph.invoke(
             {"messages": [{"role": "user", "content": query}]},
             config,
             stream_mode="values"
-            )
+        )
         
-        # V2
-        # config = {"configurable": {"thread_id": f"{current_user.id}"}}
-        # response_gen = graph.stream(
-        #         {"messages": [{"role": "user", "content": query}]},
-        #         config,
-        #         stream_mode="values",
-        #     )
-        # response = list(response_gen) 
-        # Optionally, determine which tool was used (if available)
-        tool_used = "unknown"
-
         result_messages = response["messages"]
-        # Extract tool names
         tool_used = [msg.name for msg in result_messages if hasattr(msg, 'name')]
             
         # Save chat history
@@ -57,12 +51,23 @@ async def chat(
             response=json.dumps(response["messages"][-1].content, default=str), 
             tool_used=tool_used,
             timestamp=datetime.now(timezone.utc),
-            
         )
         db.add(chat_entry)
+        
+        # Increment usage
+        SubscriptionService.increment_chat_usage(current_user, db)
+        
         db.commit()
         logger.info(f"Saved chat history for user {current_user.id}")
-        return {"response": response["messages"][-1].content}
+        
+        return {
+            "response": response["messages"][-1].content,
+            "usage": {
+                "chats_used": chat_check["chats_used"] + 1,
+                "max_chats": chat_check["max_chats"],
+                "remaining": chat_check["remaining"] - 1
+            }
+        }
     except Exception as e:
         logger.error(f"Error in chat endpoint for user {current_user.id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

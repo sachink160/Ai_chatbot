@@ -19,6 +19,8 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         phone=user.phone,
         user_type=user.user_type,
         password=auth.hash_password(user.password),
+        is_subscribed=False,  # New users start with free tier
+        subscription_end_date=None
     )
     db.add(new_user)
     db.commit()
@@ -51,3 +53,31 @@ def logout(body: schemas.TokenLogout, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid refresh token")
     auth.blacklist_token(body.refresh_token, db)
     return {"message": "User logged out. Refresh token blacklisted."}
+
+@router.get("/profile", response_model=schemas.UserProfileResponse)
+def get_user_profile(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
+    """Get comprehensive user profile with subscription and usage info"""
+    from app.subscription_service import SubscriptionService
+    subscription_info = SubscriptionService.get_user_subscription_info(current_user, db)
+    
+    return schemas.UserProfileResponse(
+        id=current_user.id,
+        username=current_user.username,
+        fullname=current_user.fullname,
+        email=current_user.email,
+        phone=current_user.phone,
+        user_type=current_user.user_type,
+        is_subscribed=subscription_info["is_subscribed"],
+        subscription_end_date=subscription_info.get("subscription_end_date"),
+        current_usage=schemas.UsageResponse(
+            month_year=subscription_info["current_usage"]["month_year"],
+            chats_used=subscription_info["current_usage"]["chats_used"],
+            documents_uploaded=subscription_info["current_usage"]["documents_uploaded"],
+            hr_documents_uploaded=subscription_info["current_usage"]["hr_documents_uploaded"],
+            video_uploads=subscription_info["current_usage"]["video_uploads"],
+            max_chats=subscription_info["limits"]["max_chats_per_month"],
+            max_documents=subscription_info["limits"]["max_documents"],
+            max_hr_documents=subscription_info["limits"]["max_hr_documents"],
+            max_video_uploads=subscription_info["limits"]["max_video_uploads"]
+        )
+    )

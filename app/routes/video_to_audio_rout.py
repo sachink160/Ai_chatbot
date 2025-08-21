@@ -29,7 +29,27 @@ async def upload_video(
     if not file.filename.lower().endswith((".mp4", ".mov", ".avi", ".mkv")):
         raise HTTPException(status_code=400, detail="Invalid file type.")
 
+    # Check subscription limits
+    from app.subscription_service import SubscriptionService
+    from app.database import get_db
+    from app import models
+    
+    # Get database session
+    db = next(get_db())
     try:
+        # Get user model from database
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        video_check = SubscriptionService.can_upload_video(user, db)
+        
+        if not video_check["can_use"]:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Video upload limit reached. You have uploaded {video_check['video_uploads']}/{video_check['max_video_uploads']} videos this month. Please upgrade your subscription for more uploads."
+            )
+        
         # Save upload synchronously
         input_path = video_to_audio.save_upload(file, user_id)
         # Offload processing to a thread
@@ -39,13 +59,28 @@ async def upload_video(
             video_to_audio.process_video,
             input_path, user_id, file.filename
         )
+        
+        # Increment usage
+        SubscriptionService.increment_video_usage(user, db)
+        
+        return {
+            "video_url": f"/video-to-audio/download/{user_id}/{os.path.basename(output_video)}",
+            "audio_url": f"/video-to-audio/download/{user_id}/{os.path.basename(output_audio)}",
+            "usage": {
+                "video_uploads": video_check["video_uploads"] + 1,
+                "max_video_uploads": video_check["max_video_uploads"],
+                "remaining": video_check["remaining"] - 1
+            }
+        }
+    except HTTPException:
+        raise
     except subprocess.CalledProcessError as e:
         return JSONResponse(status_code=500, content={"error": f"Processing failed: {e}"})
-
-    return {
-        "video_url": f"/video-to-audio/download/{user_id}/{os.path.basename(output_video)}",
-        "audio_url": f"/video-to-audio/download/{user_id}/{os.path.basename(output_audio)}"
-    }
+    except Exception as e:
+        logger.error(f"Error in video upload: {e}")
+        raise HTTPException(status_code=500, detail=f"Error processing video: {str(e)}")
+    finally:
+        db.close()
 
 @router.get("/video-to-audio/uploads")
 def list_uploaded_files(current_user: dict = Depends(get_current_user)):
