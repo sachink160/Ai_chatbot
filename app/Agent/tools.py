@@ -87,7 +87,7 @@ def trip_planner_tool(input: str) -> str:
 """
     return plan
 
-
+ 
 def smart_scrape_updates(
     urls: Annotated[List[str], "List of base URLs (e.g., website homepages)"],
     keywords: Annotated[List[str], "Keywords like blog, news, product to look for internally"]
@@ -320,4 +320,4 @@ builder.add_edge("tools", "call_model")
 
 memory = MemorySaver()  # ✅ Enables memory/summarization
 # graph = builder.compile()
-graph = builder.compile(checkpointer=memory)
+graph = builder.compile(checkpointer=memory)  

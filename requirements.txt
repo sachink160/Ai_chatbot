@@ -25,5 +25,4 @@ pytube
 pillow
 lxml
 pytest
-psycopg2-binary
 youtube_transcript_api

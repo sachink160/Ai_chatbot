@@ -1,0 +1,83 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+logs/
+*.log
+uploads/
+processed/
+chroma_db/
+hr_docs/
+docs/
+.history/
+.zencoder/
+meeting_logs.txt
+plane.txt
+0.10.0
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.dev.yml
+wait-for-postgres.sh
+
+# Documentation
+README.md
+*.md
+
+# Temporary files
+*.tmp
+*.temp
+
+# Additional project files
+init.sql/
+nginx.conf 
