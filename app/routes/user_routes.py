@@ -26,14 +26,31 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "User registered successfully"}
 
-@router.post("/login", response_model=schemas.TokenPair)
+@router.post("/login", response_model=schemas.LoginResponse)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     access_token = auth.create_access_token({"sub": user.username}, db)
     refresh_token = auth.create_refresh_token({"sub": user.username}, db)
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    
+    # Return user details along with tokens
+    user_data = {
+        "id": user.id,
+        "username": user.username,
+        "fullname": user.fullname,
+        "email": user.email,
+        "phone": user.phone,
+        "user_type": user.user_type,
+        "is_subscribed": user.is_subscribed,
+        "subscription_end_date": user.subscription_end_date
+    }
+    
+    return {
+        "access_token": access_token, 
+        "refresh_token": refresh_token,
+        "user": user_data
+    }
 
 @router.post("/refresh", response_model=schemas.TokenPair)
 def refresh_token(body: schemas.TokenRefresh, db: Session = Depends(get_db)):

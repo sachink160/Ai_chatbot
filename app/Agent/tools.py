@@ -18,6 +18,8 @@ from urllib.parse import urljoin
 
 from typing import Annotated, List
 import os
+import json
+import re
 import requests
 import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")  # Replace with your Django 
@@ -31,6 +33,14 @@ FOURSQUARE_API_KEY = ""
 
 from app.logger import get_logger
 logger = get_logger(__name__)
+
+from pydantic import BaseModel
+class GitaResponse(BaseModel):
+    shloka: str
+    transliteration: str
+    explanation: str
+    scenario: str
+    solution: str
 
 def search_places(query, near, category):
     url = "https://api.foursquare.com/v3/places/search"
@@ -284,22 +294,84 @@ def wikipedia(query: str) -> str:
     wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
     return wikipedia.run(query)
 
+def gita_expert(query: str) -> GitaResponse:
+    """
+    solve user question and life problems.
+    Bhagavad Gita expert system with intelligent shloka selection.
+    Returns validated structured response using Pydantic.
+    """
+
+    system_prompt = """
+        You are an expert spiritual guide who always gives answers based on the Bhagavad Gita.  
+        When the user asks any question (life problem, confusion, or doubt), you must reply in **pure JSON format** only.  
+
+        JSON structure must be:
+
+        {
+            "shloka": "📖 Original Sanskrit text with reference",
+            "transliteration": "🔤 Romanized transliteration",
+            "explanation": "✨ Explanation in the user's language",
+            "scenario": "🌿 Small relatable story/example from the Gita",
+            "solution": "💡 Practical solution for user's problem"
+        }
+
+        ⚠️ Rules:
+        - Do not add extra text outside JSON.
+        - Ensure the explanation language matches the user's query language.
+    """
+
+    enhanced_query = f"""
+    User Query: {query}
+
+    Please choose the most relevant Bhagavad Gita shloka 
+    and respond strictly in the above JSON structure.
+    """
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": enhanced_query}
+    ]
+
+    try:
+        response = model_4o.invoke(messages)
+        raw_output = response.content if hasattr(response, "content") else str(response)
+
+        # Try parsing JSON
+        try:
+            parsed = json.loads(raw_output)
+        except json.JSONDecodeError:
+            # Extract JSON if model wrapped it with extra text
+            match = re.search(r"\{.*\}", raw_output, re.DOTALL)
+            if not match:
+                raise ValueError("No valid JSON found in model output")
+            parsed = json.loads(match.group(0))
+
+        # ✅ Validate using Pydantic
+        return GitaResponse(**parsed)
+
+    except Exception as error:
+        return GitaResponse(
+            shloka="Error",
+            transliteration="Error",
+            explanation=f"🕉️ Technical Error: {str(error)}",
+            scenario="🙏 Suggestion: Please rephrase your question in simple words.",
+            solution="The Gita has wisdom for every situation – let's try again!"
+        )
+# def multiply(a: int, b: int) -> int:
+#     """Multiply two numbers."""
+#     return a * b
+
+# def sum(a: int, b: int) -> int:
+#     """Sum or Add two numbers."""
+#     return a + b
 
 
-def multiply(a: int, b: int) -> int:
-    """Multiply two numbers."""
-    return a * b
 
-def sum(a: int, b: int) -> int:
-    """Sum or Add two numbers."""
-    return a + b
-
-
-
-total_tool = [weather_search, sum, multiply, send_email, google_search, youtube_search, wikipedia, smart_scrape_updates, trip_planner_tool]
+total_tool = [gita_expert,weather_search, send_email, google_search, youtube_search, wikipedia, smart_scrape_updates, trip_planner_tool]
 
 tool_node = ToolNode(total_tool)
 model = init_chat_model(model="openai:gpt-3.5-turbo")
+model_4o = init_chat_model(model="openai:gpt-4o-mini")
 # model = init_chat_model(model="openai:gpt-4o")
 model_with_tools = model.bind_tools(total_tool)
 

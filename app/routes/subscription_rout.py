@@ -49,6 +49,30 @@ async def get_user_subscription(
         features=current_user.subscription.plan.features
     )
 
+@router.get("/user/subscription/history", response_model=List[schemas.UserSubscriptionResponse])
+async def get_user_subscription_history(
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get user's subscription history (all subscriptions)"""
+    subs = SubscriptionService.get_user_subscription_history(current_user, db)
+
+    result = []
+    for s in subs:
+        result.append(
+            schemas.UserSubscriptionResponse(
+                id=s.id,
+                plan_name=s.plan.name if s.plan else None,
+                start_date=s.start_date,
+                end_date=s.end_date,
+                status=s.status,
+                payment_status=s.payment_status,
+                features=s.plan.features if s.plan else None
+            )
+        )
+
+    return result
+
 @router.get("/user/usage", response_model=schemas.UsageResponse)
 async def get_user_usage(
     current_user: models.User = Depends(auth.get_current_user),

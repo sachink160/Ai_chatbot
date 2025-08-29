@@ -42,7 +42,7 @@ class BlacklistToken(Base):
 class Document(Base):
     __tablename__ = "documents"
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    filename = Column(String)
+    filename = Column(String)   
     path = Column(String)
     user_id = Column(String, ForeignKey("users.id"))  # Changed from Integer to String
     owner = relationship("User", back_populates="documents")

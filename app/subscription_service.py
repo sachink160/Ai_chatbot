@@ -263,3 +263,16 @@ class SubscriptionService:
             }
         
         return subscription_info
+
+    @staticmethod
+    def get_user_subscription_history(user: models.User, db: Session):
+        """Return all subscriptions for a user ordered by start_date desc.
+
+        Returns a list of UserSubscription ORM objects. Caller may map to
+        response schemas as needed.
+        """
+        subs = db.query(models.UserSubscription).filter(
+            models.UserSubscription.user_id == user.id
+        ).order_by(models.UserSubscription.start_date.desc()).all()
+
+        return subs
