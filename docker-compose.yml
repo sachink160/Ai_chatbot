@@ -1,20 +1,20 @@
 version: "3.8"
 
 services:
-  db:
-    image: postgres:15
-    container_name: postgres_db
-    environment:
-      POSTGRES_DB: new_gen
-      POSTGRES_USER: postgres
-      # POSTGRES_PASSWORD: dwij9143
-      POSTGRES_HOST_AUTH_METHOD: trust
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # make sure init.sql exists
-    restart: always
+  # db:
+  #   image: postgres:15
+  #   container_name: postgres_db
+  #   environment:
+  #     POSTGRES_DB: new_gen
+  #     POSTGRES_USER: postgres
+  #     # POSTGRES_PASSWORD: dwij9143
+  #     POSTGRES_HOST_AUTH_METHOD: trust
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # make sure init.sql exists
+  #   restart: always
 
   web:
     build: .
