@@ -30,3 +30,6 @@ youtube_transcript_api
 razorpay
 slowapi
 redis
+PyMuPDF
+python-docx
+openai

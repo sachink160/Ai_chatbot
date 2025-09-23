@@ -104,3 +104,44 @@ class Question_r(BaseModel):
 
 class Hr_Question(BaseModel):
     question: str
+
+# Dynamic Prompt Schemas
+class DynamicPromptCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    prompt_template: str
+
+class DynamicPromptUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    prompt_template: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class DynamicPromptResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str]
+    prompt_template: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+# Document Processing Schemas
+class DocumentProcessRequest(BaseModel):
+    prompt_id: str
+    file_path: str
+    original_filename: str
+
+class DocumentProcessResponse(BaseModel):
+    id: str
+    prompt_id: str
+    original_filename: str
+    file_type: str
+    processing_status: str
+    extracted_text: Optional[str] = None
+    processed_result: Optional[str] = None
+    error_message: Optional[str] = None
+    created_at: datetime
+
+class DocumentUploadRequest(BaseModel):
+    prompt_id: str

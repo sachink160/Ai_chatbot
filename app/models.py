@@ -24,6 +24,8 @@ class User(Base):
     chat_history = relationship("ChatHistory", back_populates="user", cascade="all, delete-orphan")
     subscription = relationship("UserSubscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     usage = relationship("UsageTracking", back_populates="user", cascade="all, delete-orphan")
+    dynamic_prompts = relationship("DynamicPrompt", cascade="all, delete-orphan")
+    processed_documents = relationship("ProcessedDocument", cascade="all, delete-orphan")
 
 class OutstandingToken(Base):
     __tablename__ = "outstanding_tokens"
@@ -127,3 +129,36 @@ class UsageTracking(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     user = relationship("User", back_populates="usage")
+
+class DynamicPrompt(Base):
+    __tablename__ = "dynamic_prompts"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    name = Column(String, nullable=False)
+    description = Column(String)
+    prompt_template = Column(String, nullable=False)  # The actual prompt template
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User")
+
+class ProcessedDocument(Base):
+    __tablename__ = "processed_documents"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    prompt_id = Column(String, ForeignKey("dynamic_prompts.id"))
+    original_filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    extracted_text = Column(String)  # Store extracted text
+    processed_result = Column(String)  # Store the final processed result (JSON)
+    file_type = Column(String)  # pdf, docx, txt, image, etc.
+    processing_status = Column(String, default="pending")  # pending, processing, completed, failed
+    error_message = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User")
+    prompt = relationship("DynamicPrompt")

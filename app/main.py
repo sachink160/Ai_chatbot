@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends
-from app.routes import user_routes, rag_rout, tools_rout, hr_rout, video_to_audio_rout, subscription_rout
+from app.routes import user_routes, rag_rout, tools_rout, hr_rout, video_to_audio_rout, subscription_rout, dynamic_prompt_routes
 from app.database import Base, engine
 from app.auth import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,6 +50,7 @@ app.include_router(tools_rout.router)
 app.include_router(hr_rout.router)
 app.include_router(video_to_audio_rout.router)
 app.include_router(subscription_rout.router)
+app.include_router(dynamic_prompt_routes.router)
 # app.include_router(social_media_rout.router)
 
 
