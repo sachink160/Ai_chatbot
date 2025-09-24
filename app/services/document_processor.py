@@ -18,41 +18,58 @@ class DocumentProcessor:
     
     def extract_text_from_pdf(self, pdf_path: str) -> str:
         """Extract text from both text-based and scanned PDFs using OpenAI Vision when needed."""
-        doc = fitz.open(pdf_path)
-        full_text = ""
+        try:
+            doc = fitz.open(pdf_path)
+            full_text = ""
+            total_pages = len(doc)
+            
+            logger.info(f"Processing PDF with {total_pages} pages")
 
-        for page_num, page in enumerate(doc, start=1):
-            text = page.get_text("text")
+            for page_num, page in enumerate(doc, start=1):
+                try:
+                    text = page.get_text("text")
 
-            if text.strip():  
-                logger.info(f"[Page {page_num}] ✅ Text detected directly")
-                full_text += text + "\n"
-            else:
-                logger.info(f"[Page {page_num}] 🔍 No text found, using OpenAI Vision OCR...")
-                pix = page.get_pixmap(dpi=200)  # render page as image
-                img_bytes = pix.tobytes("png")
-                img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+                    if text.strip():  
+                        logger.info(f"[Page {page_num}/{total_pages}] Text detected directly")
+                        full_text += text + "\n"
+                    else:
+                        logger.info(f"[Page {page_num}/{total_pages}] No text found, using OpenAI Vision OCR...")
+                        pix = page.get_pixmap(dpi=200)  # render page as image
+                        img_bytes = pix.tobytes("png")
+                        img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
-                response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "Extract all text clearly from this image."},
+                        response = self.client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[
                                 {
-                                    "type": "image_url",
-                                    "image_url": {"url": f"data:image/png;base64,{img_b64}"},
-                                },
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "text", "text": "Extract all text clearly from this image."},
+                                        {
+                                            "type": "image_url",
+                                            "image_url": {"url": f"data:image/png;base64,{img_b64}"},
+                                        },
+                                    ],
+                                }
                             ],
-                        }
-                    ],
-                )
+                        )
 
-                page_text = response.choices[0].message.content.strip()
-                full_text += page_text + "\n"
-
-        return full_text.strip()
+                        page_text = response.choices[0].message.content.strip()
+                        full_text += page_text + "\n"
+                        logger.info(f"[Page {page_num}/{total_pages}] OCR processing completed")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing page {page_num}: {str(e)}")
+                    # Continue with next page instead of failing completely
+                    continue
+            
+            doc.close()
+            logger.info(f"PDF processing completed. Extracted {len(full_text)} characters")
+            return full_text.strip()
+            
+        except Exception as e:
+            logger.error(f"Error opening PDF file: {str(e)}")
+            raise e
 
     def extract_text_from_docx(self, docx_path: str) -> str:
         """Extract text from DOCX files."""
@@ -91,23 +108,36 @@ class DocumentProcessor:
 
     def extract_text(self, file_path: str) -> str:
         """Auto-detect file type and extract text."""
-        ext = os.path.splitext(file_path)[1].lower()
+        try:
+            ext = os.path.splitext(file_path)[1].lower()
+            logger.info(f"Extracting text from {ext} file: {os.path.basename(file_path)}")
 
-        if ext == ".pdf":
-            return self.extract_text_from_pdf(file_path)
-        elif ext == ".docx":
-            return self.extract_text_from_docx(file_path)
-        elif ext == ".txt":
-            return self.extract_text_from_txt(file_path)
-        elif ext in [".jpg", ".jpeg", ".png", ".jfif", ".bmp", ".tiff", ".tif", ".webp", ".heic"]:
-            return self.extract_text_from_image_with_openai(file_path)
-        else:
-            raise ValueError(f"Unsupported file type: {ext}")
+            if ext == ".pdf":
+                return self.extract_text_from_pdf(file_path)
+            elif ext == ".docx":
+                return self.extract_text_from_docx(file_path)
+            elif ext == ".txt":
+                return self.extract_text_from_txt(file_path)
+            elif ext in [".jpg", ".jpeg", ".png", ".jfif", ".bmp", ".tiff", ".tif", ".webp", ".heic"]:
+                return self.extract_text_from_image_with_openai(file_path)
+            else:
+                raise ValueError(f"Unsupported file type: {ext}")
+                
+        except Exception as e:
+            logger.error(f"Error extracting text from {file_path}: {str(e)}")
+            raise e
 
     def process_text_with_prompt(self, text: str, prompt_template: str) -> Dict[str, Any]:
         """Process extracted text using a custom prompt template."""
         # Replace {text} placeholder in the prompt template with actual text
         prompt = prompt_template.format(text=text)
+        
+        # For very long texts, we might need to chunk them
+        max_text_length = 100000  # 100k characters limit for OpenAI
+        if len(text) > max_text_length:
+            logger.warning(f"Text is very long ({len(text)} chars), truncating to {max_text_length} chars")
+            text = text[:max_text_length] + "\n\n[Text truncated due to length]"
+            prompt = prompt_template.format(text=text)
         
         # Measure processing time
         start_time = time.time()
@@ -174,12 +204,16 @@ class DocumentProcessor:
             db.refresh(processed_doc)
 
             # Extract text from document
-            logger.info(f"Extracting text from {original_filename}")
+            logger.info(f"Starting text extraction for {original_filename}")
             extracted_text = self.extract_text(file_path)
+            
+            if not extracted_text or len(extracted_text.strip()) < 10:
+                raise ValueError("No meaningful text extracted from document")
             
             # Update with extracted text
             processed_doc.extracted_text = extracted_text
             db.commit()
+            logger.info(f"Text extraction completed. Extracted {len(extracted_text)} characters")
 
             # Process text with custom prompt
             logger.info(f"Processing text with prompt: {prompt.name}")
