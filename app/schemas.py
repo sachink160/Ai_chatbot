@@ -84,6 +84,12 @@ class UserProfileResponse(BaseModel):
     subscription_end_date: Optional[datetime]
     current_usage: Optional[UsageResponse]
 
+class UserUpdate(BaseModel):
+    fullname: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    password: Optional[str] = None
+
 
 class DocUploadResponse(BaseModel):
     doc_id: int

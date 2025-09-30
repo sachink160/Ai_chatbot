@@ -131,3 +131,50 @@ def get_user_profile(current_user: models.User = Depends(auth.get_current_user),
             max_video_uploads=subscription_info["limits"]["max_video_uploads"]
         )
     )
+
+@router.put("/profile", response_model=dict)
+def update_user_profile(
+    user_update: schemas.UserUpdate,
+    current_user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update user profile information"""
+    logger.info(f"Profile update attempt for user: {current_user.username}")
+    
+    try:
+        # Check if email is being updated and if it already exists
+        if user_update.email and user_update.email != current_user.email:
+            existing_user = db.query(models.User).filter(
+                models.User.email == user_update.email,
+                models.User.id != current_user.id
+            ).first()
+            if existing_user:
+                logger.warning(f"Profile update failed - email already exists: {user_update.email}")
+                raise HTTPException(status_code=400, detail="Email already exists")
+        
+        # Update fields if provided
+        if user_update.fullname is not None:
+            current_user.fullname = user_update.fullname
+        if user_update.email is not None:
+            current_user.email = user_update.email
+        if user_update.phone is not None:
+            current_user.phone = user_update.phone
+        if user_update.password is not None:
+            current_user.password = auth.hash_password(user_update.password)
+        
+        db.commit()
+        
+        logger.info(f"Profile updated successfully for user: {current_user.username}")
+        from app.logger import log_business_event
+        log_business_event("profile_update", str(current_user.id), {
+            "username": current_user.username,
+            "updated_fields": [k for k, v in user_update.dict().items() if v is not None]
+        })
+        
+        return {"message": "Profile updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Profile update failed for {current_user.username}: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Profile update failed")
