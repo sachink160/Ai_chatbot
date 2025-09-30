@@ -33,6 +33,12 @@ async def create_dynamic_prompt(
 ):
     """Create a new dynamic prompt."""
     try:
+        # Check if gpt_model column exists
+        from sqlalchemy import inspect
+        inspector = inspect(db.bind)
+        columns = [col['name'] for col in inspector.get_columns('dynamic_prompts')]
+        has_gpt_model = 'gpt_model' in columns
+        
         # Check if prompt name already exists for this user
         existing_prompt = db.query(DynamicPrompt).filter(
             DynamicPrompt.user_id == current_user.id,
@@ -43,12 +49,24 @@ async def create_dynamic_prompt(
             raise HTTPException(status_code=400, detail="Prompt name already exists")
         
         # Create new prompt
-        new_prompt = DynamicPrompt(
-            user_id=current_user.id,
-            name=prompt_data.name,
-            description=prompt_data.description,
-            prompt_template=prompt_data.prompt_template
-        )
+        if has_gpt_model:
+            new_prompt = DynamicPrompt(
+                user_id=current_user.id,
+                name=prompt_data.name,
+                description=prompt_data.description,
+                prompt_template=prompt_data.prompt_template,
+                gpt_model=prompt_data.gpt_model or "gpt-4o-mini"
+            )
+        else:
+            # Create without gpt_model column
+            new_prompt = DynamicPrompt(
+                user_id=current_user.id,
+                name=prompt_data.name,
+                description=prompt_data.description,
+                prompt_template=prompt_data.prompt_template
+            )
+            # Add gpt_model attribute manually
+            new_prompt.gpt_model = prompt_data.gpt_model or "gpt-4o-mini"
         
         db.add(new_prompt)
         db.commit()
@@ -68,9 +86,47 @@ async def get_user_prompts(
 ):
     """Get all dynamic prompts for the current user."""
     try:
-        prompts = db.query(DynamicPrompt).filter(
-            DynamicPrompt.user_id == current_user.id
-        ).order_by(DynamicPrompt.created_at.desc()).all()
+        # Check if gpt_model column exists
+        from sqlalchemy import inspect
+        inspector = inspect(db.bind)
+        columns = [col['name'] for col in inspector.get_columns('dynamic_prompts')]
+        has_gpt_model = 'gpt_model' in columns
+        
+        if has_gpt_model:
+            # Normal query with gpt_model column
+            prompts = db.query(DynamicPrompt).filter(
+                DynamicPrompt.user_id == current_user.id
+            ).order_by(DynamicPrompt.created_at.desc()).all()
+        else:
+            # Query without gpt_model column and add default value
+            prompts = db.query(
+                DynamicPrompt.id,
+                DynamicPrompt.user_id,
+                DynamicPrompt.name,
+                DynamicPrompt.description,
+                DynamicPrompt.prompt_template,
+                DynamicPrompt.is_active,
+                DynamicPrompt.created_at,
+                DynamicPrompt.updated_at
+            ).filter(
+                DynamicPrompt.user_id == current_user.id
+            ).order_by(DynamicPrompt.created_at.desc()).all()
+            
+            # Convert to DynamicPrompt objects with default gpt_model
+            prompt_objects = []
+            for prompt_data in prompts:
+                prompt_obj = DynamicPrompt()
+                prompt_obj.id = prompt_data.id
+                prompt_obj.user_id = prompt_data.user_id
+                prompt_obj.name = prompt_data.name
+                prompt_obj.description = prompt_data.description
+                prompt_obj.prompt_template = prompt_data.prompt_template
+                prompt_obj.gpt_model = "gpt-4o-mini"  # Default value
+                prompt_obj.is_active = prompt_data.is_active
+                prompt_obj.created_at = prompt_data.created_at
+                prompt_obj.updated_at = prompt_data.updated_at
+                prompt_objects.append(prompt_obj)
+            prompts = prompt_objects
         
         return prompts
         
@@ -138,6 +194,9 @@ async def update_prompt(
         if prompt_data.prompt_template is not None:
             prompt.prompt_template = prompt_data.prompt_template
             
+        if prompt_data.gpt_model is not None:
+            prompt.gpt_model = prompt_data.gpt_model
+            
         if prompt_data.is_active is not None:
             prompt.is_active = prompt_data.is_active
         
@@ -192,6 +251,16 @@ async def upload_and_process_document(
 ):
     """Upload a document and process it with a specific prompt."""
     try:
+        # Check subscription limits for dynamic prompt document uploads
+        from app.subscription_service import SubscriptionService
+        doc_check = SubscriptionService.can_upload_dynamic_prompt_document(current_user, db)
+        
+        if not doc_check["can_use"]:
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Dynamic prompt document upload limit reached. You have uploaded {doc_check['dynamic_prompt_documents_uploaded']}/{doc_check['max_dynamic_prompt_documents']} documents this month. Please upgrade your subscription for more uploads."
+            )
+        
         # Validate prompt exists and belongs to user
         prompt = db.query(DynamicPrompt).filter(
             DynamicPrompt.id == prompt_id,
@@ -238,10 +307,18 @@ async def upload_and_process_document(
             original_filename=file.filename
         )
         
+        # Increment usage after successful processing
+        SubscriptionService.increment_dynamic_prompt_document_usage(current_user, db)
+        
         return {
             "message": "Document processed successfully",
             "processed_document_id": processed_doc.id,
-            "status": processed_doc.processing_status
+            "status": processed_doc.processing_status,
+            "usage": {
+                "dynamic_prompt_documents_uploaded": doc_check["dynamic_prompt_documents_uploaded"] + 1,
+                "max_dynamic_prompt_documents": doc_check["max_dynamic_prompt_documents"],
+                "remaining": doc_check["remaining"] - 1
+            }
         }
         
     except HTTPException:

@@ -10,47 +10,80 @@ router = APIRouter(tags=["Auth"])
 
 @router.post("/register", response_model=dict)
 def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    logger.info(f"Registration attempt for username: {user.username}")
+    
     if db.query(models.User).filter(models.User.username == user.username).first():
+        logger.warning(f"Registration failed - username already exists: {user.username}")
         raise HTTPException(status_code=400, detail="Username already exists")
-    new_user = models.User(
-        username=user.username,
-        fullname=user.fullname,
-        email=user.email,
-        phone=user.phone,
-        user_type=user.user_type,
-        password=auth.hash_password(user.password),
-        is_subscribed=False,  # New users start with free tier
-        subscription_end_date=None
-    )
-    db.add(new_user)
-    db.commit()
-    return {"message": "User registered successfully"}
+    
+    try:
+        new_user = models.User(
+            username=user.username,
+            fullname=user.fullname,
+            email=user.email,
+            phone=user.phone,
+            user_type=user.user_type,
+            password=auth.hash_password(user.password),
+            is_subscribed=False,  # New users start with free tier
+            subscription_end_date=None
+        )
+        db.add(new_user)
+        db.commit()
+        
+        logger.info(f"User registered successfully: {user.username} (ID: {new_user.id})")
+        from app.logger import log_business_event
+        log_business_event("user_registration", str(new_user.id), {
+            "username": user.username,
+            "email": user.email,
+            "user_type": user.user_type
+        })
+        
+        return {"message": "User registered successfully"}
+    except Exception as e:
+        logger.error(f"Registration failed for {user.username}: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Registration failed")
 
 @router.post("/login", response_model=schemas.LoginResponse)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    logger.info(f"Login attempt for username: {form_data.username}")
+    
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.password):
+        logger.warning(f"Login failed - invalid credentials for username: {form_data.username}")
         raise HTTPException(status_code=401, detail="Invalid username or password")
-    access_token = auth.create_access_token({"sub": user.username}, db)
-    refresh_token = auth.create_refresh_token({"sub": user.username}, db)
     
-    # Return user details along with tokens
-    user_data = {
-        "id": user.id,
-        "username": user.username,
-        "fullname": user.fullname,
-        "email": user.email,
-        "phone": user.phone,
-        "user_type": user.user_type,
-        "is_subscribed": user.is_subscribed,
-        "subscription_end_date": user.subscription_end_date
-    }
-    
-    return {
-        "access_token": access_token, 
-        "refresh_token": refresh_token,
-        "user": user_data
-    }
+    try:
+        access_token = auth.create_access_token({"sub": user.username}, db)
+        refresh_token = auth.create_refresh_token({"sub": user.username}, db)
+        
+        logger.info(f"User logged in successfully: {user.username} (ID: {user.id})")
+        from app.logger import log_business_event
+        log_business_event("user_login", str(user.id), {
+            "username": user.username,
+            "user_type": user.user_type
+        })
+        
+        # Return user details along with tokens
+        user_data = {
+            "id": user.id,
+            "username": user.username,
+            "fullname": user.fullname,
+            "email": user.email,
+            "phone": user.phone,
+            "user_type": user.user_type,
+            "is_subscribed": user.is_subscribed,
+            "subscription_end_date": user.subscription_end_date
+        }
+        
+        return {
+            "access_token": access_token, 
+            "refresh_token": refresh_token,
+            "user": user_data
+        }
+    except Exception as e:
+        logger.error(f"Login failed for {form_data.username}: {e}")
+        raise HTTPException(status_code=500, detail="Login failed")
 
 @router.post("/refresh", response_model=schemas.TokenPair)
 def refresh_token(body: schemas.TokenRefresh, db: Session = Depends(get_db)):

@@ -16,7 +16,7 @@ class DocumentProcessor:
     def __init__(self, openai_api_key: str):
         self.client = OpenAI(api_key=openai_api_key)
     
-    def extract_text_from_pdf(self, pdf_path: str) -> str:
+    def extract_text_from_pdf(self, pdf_path: str, model: str = "gpt-4o-mini") -> str:
         """Extract text from both text-based and scanned PDFs using OpenAI Vision when needed."""
         try:
             doc = fitz.open(pdf_path)
@@ -39,7 +39,7 @@ class DocumentProcessor:
                         img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
                         response = self.client.chat.completions.create(
-                            model="gpt-4o-mini",
+                            model=model,
                             messages=[
                                 {
                                     "role": "user",
@@ -82,14 +82,14 @@ class DocumentProcessor:
         with open(txt_path, "r", encoding="utf-8") as f:
             return f.read().strip()
 
-    def extract_text_from_image_with_openai(self, image_path: str) -> str:
+    def extract_text_from_image_with_openai(self, image_path: str, model: str = "gpt-4o-mini") -> str:
         """Extract text from images using OpenAI Vision."""
         with open(image_path, "rb") as f:
             img_bytes = f.read()
         img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
         response = self.client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=[
                 {
                     "role": "user",
@@ -106,20 +106,20 @@ class DocumentProcessor:
 
         return response.choices[0].message.content.strip()
 
-    def extract_text(self, file_path: str) -> str:
+    def extract_text(self, file_path: str, model: str = "gpt-4o-mini") -> str:
         """Auto-detect file type and extract text."""
         try:
             ext = os.path.splitext(file_path)[1].lower()
             logger.info(f"Extracting text from {ext} file: {os.path.basename(file_path)}")
 
             if ext == ".pdf":
-                return self.extract_text_from_pdf(file_path)
+                return self.extract_text_from_pdf(file_path, model)
             elif ext == ".docx":
                 return self.extract_text_from_docx(file_path)
             elif ext == ".txt":
                 return self.extract_text_from_txt(file_path)
             elif ext in [".jpg", ".jpeg", ".png", ".jfif", ".bmp", ".tiff", ".tif", ".webp", ".heic"]:
-                return self.extract_text_from_image_with_openai(file_path)
+                return self.extract_text_from_image_with_openai(file_path, model)
             else:
                 raise ValueError(f"Unsupported file type: {ext}")
                 
@@ -127,7 +127,7 @@ class DocumentProcessor:
             logger.error(f"Error extracting text from {file_path}: {str(e)}")
             raise e
 
-    def process_text_with_prompt(self, text: str, prompt_template: str) -> Dict[str, Any]:
+    def process_text_with_prompt(self, text: str, prompt_template: str, model: str = "gpt-4o-mini") -> Dict[str, Any]:
         """Process extracted text using a custom prompt template."""
         # Replace {text} placeholder in the prompt template with actual text
         prompt = prompt_template.format(text=text)
@@ -143,7 +143,7 @@ class DocumentProcessor:
         start_time = time.time()
         
         response = self.client.chat.completions.create(
-            model="gpt-4o-mini", 
+            model=model, 
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
         )
@@ -205,7 +205,7 @@ class DocumentProcessor:
 
             # Extract text from document
             logger.info(f"Starting text extraction for {original_filename}")
-            extracted_text = self.extract_text(file_path)
+            extracted_text = self.extract_text(file_path, prompt.gpt_model)
             
             if not extracted_text or len(extracted_text.strip()) < 10:
                 raise ValueError("No meaningful text extracted from document")
@@ -216,8 +216,8 @@ class DocumentProcessor:
             logger.info(f"Text extraction completed. Extracted {len(extracted_text)} characters")
 
             # Process text with custom prompt
-            logger.info(f"Processing text with prompt: {prompt.name}")
-            result = self.process_text_with_prompt(extracted_text, prompt.prompt_template)
+            logger.info(f"Processing text with prompt: {prompt.name} using model: {prompt.gpt_model}")
+            result = self.process_text_with_prompt(extracted_text, prompt.prompt_template, prompt.gpt_model)
             
             # Update with final result
             processed_doc.processed_result = json.dumps(result["result"])

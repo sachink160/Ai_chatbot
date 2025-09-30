@@ -88,10 +88,12 @@ async def get_user_usage(
         documents_uploaded=usage.documents_uploaded,
         hr_documents_uploaded=usage.hr_documents_uploaded,
         video_uploads=usage.video_uploads,
+        dynamic_prompt_documents_uploaded=getattr(usage, 'dynamic_prompt_documents_uploaded', 0),
         max_chats=limits["max_chats_per_month"],
         max_documents=limits["max_documents"],
         max_hr_documents=limits["max_hr_documents"],
-        max_video_uploads=limits["max_video_uploads"]
+        max_video_uploads=limits["max_video_uploads"],
+        max_dynamic_prompt_documents=limits.get("max_dynamic_prompt_documents", 5)
     )
 
 @router.post("/subscribe")

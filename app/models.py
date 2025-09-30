@@ -96,6 +96,7 @@ class SubscriptionPlan(Base):
     max_documents = Column(Integer)
     max_hr_documents = Column(Integer)
     max_video_uploads = Column(Integer)
+    max_dynamic_prompt_documents = Column(Integer, default=5)  # Default 5 documents for dynamic prompts
     features = Column(String)  # JSON string of features
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -125,6 +126,7 @@ class UsageTracking(Base):
     documents_uploaded = Column(Integer, default=0)
     hr_documents_uploaded = Column(Integer, default=0)
     video_uploads = Column(Integer, default=0)
+    dynamic_prompt_documents_uploaded = Column(Integer, default=0)  # Track dynamic prompt document uploads
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -138,6 +140,7 @@ class DynamicPrompt(Base):
     name = Column(String, nullable=False)
     description = Column(String)
     prompt_template = Column(String, nullable=False)  # The actual prompt template
+    gpt_model = Column(String, default="gpt-4o-mini")  # GPT model selection
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

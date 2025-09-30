@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends
-from app.routes import user_routes, rag_rout, tools_rout, hr_rout, video_to_audio_rout, subscription_rout, dynamic_prompt_routes
+from app.routes import user_routes, rag_rout, tools_rout, hr_rout, video_to_audio_rout, subscription_rout, dynamic_prompt_routes, logs_routes
 from app.database import Base, engine
 from app.auth import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +9,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.Agent.news import run_news_agent
 from app.logger import get_logger
+from app.middleware import LoggingMiddleware, ErrorHandlingMiddleware
 logger = get_logger(__name__)
 
 scheduler = AsyncIOScheduler()
@@ -44,6 +45,12 @@ async def lifespan(app: FastAPI):
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(lifespan=lifespan)
+
+# Add middleware
+app.add_middleware(ErrorHandlingMiddleware)
+app.add_middleware(LoggingMiddleware)
+
+# Include routers
 app.include_router(user_routes.router)
 app.include_router(rag_rout.router)
 app.include_router(tools_rout.router)
@@ -51,6 +58,7 @@ app.include_router(hr_rout.router)
 app.include_router(video_to_audio_rout.router)
 app.include_router(subscription_rout.router)
 app.include_router(dynamic_prompt_routes.router)
+app.include_router(logs_routes.router)
 # app.include_router(social_media_rout.router)
 
 

@@ -16,7 +16,8 @@ class SubscriptionService:
             "max_chats_per_month": 10,
             "max_documents": 2,
             "max_hr_documents": 2,
-            "max_video_uploads": 1
+            "max_video_uploads": 1,
+            "max_dynamic_prompt_documents": 5  # Default 5 documents for dynamic prompts
         }
     
     @staticmethod
@@ -37,7 +38,8 @@ class SubscriptionService:
                         "max_chats_per_month": plan.max_chats_per_month,
                         "max_documents": plan.max_documents,
                         "max_hr_documents": plan.max_hr_documents,
-                        "max_video_uploads": plan.max_video_uploads
+                        "max_video_uploads": plan.max_video_uploads,
+                        "max_dynamic_prompt_documents": getattr(plan, 'max_dynamic_prompt_documents', 5)
                     }
         
         # Return free tier limits
@@ -157,6 +159,36 @@ class SubscriptionService:
         logger.info(f"Incremented video usage for user {user.id}")
     
     @staticmethod
+    def can_upload_dynamic_prompt_document(user: models.User, db: Session) -> Dict[str, Any]:
+        """Check if user can upload dynamic prompt document"""
+        limits = SubscriptionService.get_user_limits(user, db)
+        usage = SubscriptionService.get_current_usage(user, db)
+        
+        uploaded_count = getattr(usage, 'dynamic_prompt_documents_uploaded', 0)
+        max_count = limits.get("max_dynamic_prompt_documents", 5)
+        
+        can_use = uploaded_count < max_count
+        
+        return {
+            "can_use": can_use,
+            "dynamic_prompt_documents_uploaded": uploaded_count,
+            "max_dynamic_prompt_documents": max_count,
+            "remaining": max(0, max_count - uploaded_count)
+        }
+    
+    @staticmethod
+    def increment_dynamic_prompt_document_usage(user: models.User, db: Session):
+        """Increment dynamic prompt document usage for current month"""
+        usage = SubscriptionService.get_current_usage(user, db)
+        if hasattr(usage, 'dynamic_prompt_documents_uploaded'):
+            usage.dynamic_prompt_documents_uploaded += 1
+        else:
+            # If column doesn't exist yet, set it to 1
+            setattr(usage, 'dynamic_prompt_documents_uploaded', 1)
+        db.commit()
+        logger.info(f"Incremented dynamic prompt document usage for user {user.id}")
+    
+    @staticmethod
     def create_subscription_plans(db: Session):
         """Create default subscription plans if they don't exist"""
         plans_data = [
@@ -168,11 +200,13 @@ class SubscriptionService:
                 "max_documents": 20,
                 "max_hr_documents": 20,
                 "max_video_uploads": 10,
+                "max_dynamic_prompt_documents": 10,
                 "features": json.dumps([
                     "100 AI chats per month",
                     "20 document uploads",
                     "20 HR document uploads",
                     "10 video uploads",
+                    "10 dynamic prompt document uploads",
                     "Priority support"
                 ])
             },
@@ -184,11 +218,13 @@ class SubscriptionService:
                 "max_documents": 100,
                 "max_hr_documents": 100,
                 "max_video_uploads": 50,
+                "max_dynamic_prompt_documents": 50,
                 "features": json.dumps([
                     "500 AI chats per month",
                     "100 document uploads",
                     "100 HR document uploads",
                     "50 video uploads",
+                    "50 dynamic prompt document uploads",
                     "Advanced analytics",
                     "Priority support",
                     "Custom integrations"
@@ -202,11 +238,13 @@ class SubscriptionService:
                 "max_documents": 500,
                 "max_hr_documents": 500,
                 "max_video_uploads": 200,
+                "max_dynamic_prompt_documents": 200,
                 "features": json.dumps([
                     "2000 AI chats per month",
                     "500 document uploads",
                     "500 HR document uploads",
                     "200 video uploads",
+                    "200 dynamic prompt document uploads",
                     "Advanced analytics",
                     "Priority support",
                     "Custom integrations",
@@ -243,14 +281,16 @@ class SubscriptionService:
                 "chats_used": usage.chats_used,
                 "documents_uploaded": usage.documents_uploaded,
                 "hr_documents_uploaded": usage.hr_documents_uploaded,
-                "video_uploads": usage.video_uploads
+                "video_uploads": usage.video_uploads,
+                "dynamic_prompt_documents_uploaded": getattr(usage, 'dynamic_prompt_documents_uploaded', 0)
             },
             "limits": limits,
             "remaining": {
                 "chats": max(0, limits["max_chats_per_month"] - usage.chats_used),
                 "documents": max(0, limits["max_documents"] - usage.documents_uploaded),
                 "hr_documents": max(0, limits["max_hr_documents"] - usage.hr_documents_uploaded),
-                "video_uploads": max(0, limits["max_video_uploads"] - usage.video_uploads)
+                "video_uploads": max(0, limits["max_video_uploads"] - usage.video_uploads),
+                "dynamic_prompt_documents": max(0, limits.get("max_dynamic_prompt_documents", 5) - getattr(usage, 'dynamic_prompt_documents_uploaded', 0))
             }
         }
         

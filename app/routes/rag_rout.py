@@ -17,36 +17,60 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload")
 def upload_file(file: UploadFile = File(...), current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(database.get_db)):
-    # Check subscription limits
-    from app.subscription_service import SubscriptionService
-    doc_check = SubscriptionService.can_upload_document(current_user, db)
+    logger.info(f"Document upload attempt by user {current_user.id}: {file.filename}")
     
-    if not doc_check["can_use"]:
-        raise HTTPException(
-            status_code=403, 
-            detail=f"Document upload limit reached. You have uploaded {doc_check['documents_uploaded']}/{doc_check['max_documents']} documents this month. Please upgrade your subscription for more uploads."
-        )
-    
-    filename = f"{uuid4()}_{file.filename}"
-    path = os.path.join(UPLOAD_DIR, filename)
-    with open(path, "wb") as f:
-        f.write(file.file.read())
-    doc = models.Document(filename=filename, path=path, owner=current_user, user_id=current_user.id)
-    db.add(doc)
-    
-    # Increment usage
-    SubscriptionService.increment_document_usage(current_user, db)
-    
-    db.commit()
-    return {
-        "message": "File uploaded", 
-        "document_id": doc.id,
-        "usage": {
-            "documents_uploaded": doc_check["documents_uploaded"] + 1,
-            "max_documents": doc_check["max_documents"],
-            "remaining": doc_check["remaining"] - 1
+    try:
+        # Check subscription limits
+        from app.subscription_service import SubscriptionService
+        doc_check = SubscriptionService.can_upload_document(current_user, db)
+        
+        if not doc_check["can_use"]:
+            logger.warning(f"Document upload limit reached for user {current_user.id}")
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Document upload limit reached. You have uploaded {doc_check['documents_uploaded']}/{doc_check['max_documents']} documents this month. Please upgrade your subscription for more uploads."
+            )
+        
+        filename = f"{uuid4()}_{file.filename}"
+        path = os.path.join(UPLOAD_DIR, filename)
+        
+        # Save file
+        with open(path, "wb") as f:
+            f.write(file.file.read())
+        
+        # Create document record
+        doc = models.Document(filename=filename, path=path, owner=current_user, user_id=current_user.id)
+        db.add(doc)
+        
+        # Increment usage
+        SubscriptionService.increment_document_usage(current_user, db)
+        
+        db.commit()
+        
+        logger.info(f"Document uploaded successfully: {file.filename} -> {filename} (ID: {doc.id})")
+        from app.logger import log_business_event
+        log_business_event("document_upload", str(current_user.id), {
+            "original_filename": file.filename,
+            "stored_filename": filename,
+            "document_id": doc.id,
+            "file_size": file.size if hasattr(file, 'size') else 'unknown'
+        })
+        
+        return {
+            "message": "File uploaded", 
+            "document_id": doc.id,
+            "usage": {
+                "documents_uploaded": doc_check["documents_uploaded"] + 1,
+                "max_documents": doc_check["max_documents"],
+                "remaining": doc_check["remaining"] - 1
+            }
         }
-    }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Document upload failed for user {current_user.id}: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="File upload failed")
 
 
 @router.get("/documents")

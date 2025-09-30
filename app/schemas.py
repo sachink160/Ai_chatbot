@@ -66,10 +66,12 @@ class UsageResponse(BaseModel):
     documents_uploaded: int
     hr_documents_uploaded: int
     video_uploads: int
+    dynamic_prompt_documents_uploaded: Optional[int] = 0
     max_chats: int
     max_documents: int
     max_hr_documents: int
     max_video_uploads: int
+    max_dynamic_prompt_documents: Optional[int] = 5
 
 class UserProfileResponse(BaseModel):
     id: str
@@ -110,11 +112,13 @@ class DynamicPromptCreate(BaseModel):
     name: str
     description: Optional[str] = None
     prompt_template: str
+    gpt_model: Optional[str] = "gpt-4o-mini"
 
 class DynamicPromptUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     prompt_template: Optional[str] = None
+    gpt_model: Optional[str] = None
     is_active: Optional[bool] = None
 
 class DynamicPromptResponse(BaseModel):
@@ -122,6 +126,7 @@ class DynamicPromptResponse(BaseModel):
     name: str
     description: Optional[str]
     prompt_template: str
+    gpt_model: str
     is_active: bool
     created_at: datetime
     updated_at: datetime
