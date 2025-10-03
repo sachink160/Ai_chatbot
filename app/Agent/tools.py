@@ -69,8 +69,22 @@ def search_places(query, near, category):
 
 def trip_planner_tool(input: str) -> str:
     """
-    Plans a trip for a given destination and date using live data.
-    Input format: 'destination, date'
+    Create comprehensive travel itineraries with real-time recommendations for attractions, dining, and accommodations.
+    
+    This intelligent trip planning tool uses live data to suggest tourist attractions, restaurants, 
+    and hotels for your destination. Perfect for planning vacations, business trips, or weekend getaways.
+
+    Args:
+        input (str): Destination and date in format "destination, date" 
+                   (e.g., "Paris, 2024-08-15", "Tokyo, next Friday", "New York, 2024-12-25")
+
+    Returns:
+        str: Detailed trip plan with attractions, restaurants, hotels, and practical travel information
+        
+    Usage Examples:
+        - "Plan a trip to Paris for August 15th, 2024"
+        - "Create itinerary for Tokyo next weekend"
+        - "Plan vacation to New York for Christmas"
     """
     try:
         destination, date = [x.strip() for x in input.split(",")]
@@ -82,18 +96,25 @@ def trip_planner_tool(input: str) -> str:
     eats = search_places("restaurant", destination, "13065")            # Foursquare category for restaurants
     hotels = search_places("hotel", destination, "19014")               # Foursquare category for hotels
 
-    plan = f"""Trip Plan for {destination} on {date}:
+    plan = f"""🗺️ **Trip Plan for {destination} on {date}**
 
-1. 🏞️ **Places to Visit:**
-   - {chr(10).join(sights)}
+🏞️ **Top Attractions:**
+{chr(10).join(f"   • {sight}" for sight in sights)}
 
-2. 🍽️ **Eating:**
-   - {chr(10).join(eats)}
+🍽️ **Recommended Restaurants:**
+{chr(10).join(f"   • {eat}" for eat in eats)}
 
-3. 🏨 **Staying:**
-   - {chr(10).join(hotels)}
+🏨 **Accommodation Options:**
+{chr(10).join(f"   • {hotel}" for hotel in hotels)}
 
-*All results are live from Foursquare. Prices and reviews may vary.*
+💡 **Travel Tips:**
+• Check local weather and pack accordingly
+• Book accommodations in advance for better rates
+• Research local customs and etiquette
+• Download offline maps for navigation
+
+📱 **Live Data Source:** Foursquare API
+⚠️ **Note:** Prices and availability may vary. Contact venues directly for current information.
 """
     return plan
 
@@ -103,19 +124,24 @@ def smart_scrape_updates(
     keywords: Annotated[List[str], "Keywords like blog, news, product to look for internally"]
 ) -> str:
     """
-    Scrape the latest content updates from one or more websites based on relevant internal links.
-
-    This tool searches each provided base URL for internal hyperlinks that contain specified keywords
-    such as 'blog', 'news', or 'product'. It then visits those internal pages and extracts the title,
-    the first <h1> tag, and a paragraph summary to provide quick, high-level insights.
+    Intelligently scrape and analyze website content for the latest updates and relevant information.
+    
+    This advanced web scraping tool searches websites for specific content types (blogs, news, products)
+    and extracts meaningful information including titles, headings, and summaries. Perfect for
+    monitoring competitor websites, tracking industry updates, or researching specific topics.
 
     Parameters:
-        urls (List[str]): A list of base website URLs to scan (e.g., 'https://www.simform.com').
-        keywords (List[str]): A list of keyword strings to match internal links (e.g., ['blog', 'news']).
+        urls (List[str]): Base website URLs to analyze (e.g., ['https://example.com', 'https://news-site.com'])
+        keywords (List[str]): Content type keywords to search for (e.g., ['blog', 'news', 'product', 'update'])
 
     Returns:
-        str: A formatted text summary of the top matched pages per site, including the page URL,
-                title, heading, and paragraph. If no matches are found or scraping fails, error messages are included.
+        str: Formatted summary with extracted content, titles, headings, and key information from matched pages
+        
+    Usage Examples:
+        - Monitor competitor blog posts and product updates
+        - Track latest news from multiple sources
+        - Research specific topics across websites
+        - Analyze website content structure and updates
     """
     updates = []
 
@@ -144,7 +170,20 @@ def smart_scrape_updates(
                     title = page.title.string.strip() if page.title else "No title"
                     h1 = page.find("h1")
                     p = page.find("p")
-                    updates.append(f"🔗 {link}\n📌 {title}\n📝 {h1.get_text(strip=True) if h1 else ''}\n📄 {p.get_text(strip=True) if p else ''}")
+                    
+                    # Enhanced content extraction
+                    meta_desc = page.find("meta", attrs={"name": "description"})
+                    description = meta_desc.get("content", "") if meta_desc else ""
+                    
+                    # Format with better structure
+                    content_summary = f"""
+🔗 **URL:** {link}
+📌 **Title:** {title}
+📝 **Heading:** {h1.get_text(strip=True) if h1 else 'No heading found'}
+📄 **Content:** {p.get_text(strip=True)[:200] + '...' if p and len(p.get_text(strip=True)) > 200 else p.get_text(strip=True) if p else 'No content found'}
+📋 **Description:** {description[:150] + '...' if description and len(description) > 150 else description if description else 'No description'}
+"""
+                    updates.append(content_summary.strip())
                 except Exception as e:
                     updates.append(f"❌ Failed to scrape {link}: {e}")
         
@@ -156,44 +195,70 @@ def smart_scrape_updates(
 
 def youtube_search(url: str) -> str:
     """
-    Retrieve information and insights from a specific YouTube video URL.
+    Extract comprehensive insights and content from YouTube videos for analysis and summarization.
+    
+    This tool analyzes YouTube videos by extracting their title, transcript, and generating
+    intelligent summaries. Perfect for educational content, tutorials, lectures, and informational videos.
 
     Args:
-        url (str): The full URL of the YouTube video to analyze, e.g. "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        url (str): Complete YouTube video URL (e.g., "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
     Returns:
-        str: A dictionary containing the video's title, transcript (if available),
-            and a summary of the video's content.
-
-    Usage:
-        Use this function when you want to extract the title, transcript, and a summary
-        from a specific YouTube video by providing its URL.
+        dict: Structured data containing:
+            - title: Video title
+            - transcript: Full transcript text (if available)
+            - summary: AI-generated summary of video content
+            
+    Usage Examples:
+        - "Analyze this YouTube tutorial: https://www.youtube.com/watch?v=abc123"
+        - "Summarize this educational video: https://youtu.be/xyz789"
+        - "What does this YouTube video say about AI?"
     """
-    if url:
+    if not url or not url.strip():
+        return {"error": "Please provide a valid YouTube video URL"}
+    
+    try:
         video_id = get_youtube_video_id(url)
+        if not video_id:
+            return {"error": "Invalid YouTube URL format. Please provide a complete YouTube video URL."}
+            
         title = get_youtube_title(video_id)
         transcript = get_youtube_transcript(video_id)
+        
         if transcript and transcript != "Transcript not available for this video.":
             summary = summarize_text_with_llm(transcript)
         else:
-            summary = "No transcript available to summarize."
+            summary = "📝 Transcript not available for this video. The video may not have captions enabled or may be private."
+            
         return {
-            "title": title,
+            "title": f"📺 {title}",
             "transcript": transcript,
-            "summary": summary
+            "summary": f"📋 **Video Summary:**\n{summary}",
+            "video_id": video_id,
+            "url": url
         }
-    else:
-        return {"detail":"Plze enter youtube video url"}
+    except Exception as e:
+        return {"error": f"Failed to process YouTube video: {str(e)}"}
 
 def google_search(query: str) -> str:
     """
-    Search Google for the provided query and return a summary of the most relevant results.
+    Perform intelligent web search using Google to find the most relevant and up-to-date information.
+    
+    This tool searches the web for current information, news, facts, and data. It's perfect for
+    finding recent developments, verifying facts, getting current statistics, or researching topics.
 
     Args:
-        query (str): The search keywords or phrase to look up on Google.
+        query (str): Search keywords, phrases, or questions (e.g., "latest AI developments 2024", 
+                    "current stock prices", "recent news about climate change")
 
     Returns:
-        str: A summary or list of the top Google search results for the query.
+        str: Curated summary of the most relevant search results with sources and key information.
+        
+    Usage Examples:
+        - "What are the latest developments in artificial intelligence?"
+        - "Current news about renewable energy"
+        - "Recent research on quantum computing"
+        - "Today's weather forecast for New York"
     """
     
     search = TavilySearchResults(max_results=2)
@@ -201,26 +266,47 @@ def google_search(query: str) -> str:
 
 def weather_search(location: str) -> str:
     """
-    Retrieve the current weather information for a specified location.
+    Get comprehensive current weather information for any location worldwide.
+    
+    This tool provides real-time weather data including temperature, conditions, 
+    humidity, wind speed, and "feels like" temperature for accurate weather reporting.
 
     Args:
-        location (str): The name of the city or location to get weather data for.
+        location (str): City name, country, or coordinates (e.g., "New York", "London, UK", "40.7128,-74.0060")
 
     Returns:
-        str: A summary of the current weather conditions at the specified location.
+        str: Detailed weather summary with temperature, conditions, humidity, and location confirmation.
+        
+    Usage Examples:
+        - "What's the weather in Paris?"
+        - "Current weather for Tokyo, Japan"
+        - "Weather conditions in Mumbai"
     """
     url = f"http://api.weatherstack.com/current?access_key={api_key}&query={location}"
     try:
         response = requests.get(url)
         data = response.json()
         if "current" in data:
-            weather_desc = data["current"]["weather_descriptions"][0]
-            temp = data["current"]["temperature"]
-            feelslike = data["current"]["feelslike"]
-            humidity = data["current"]["humidity"]
+            current = data["current"]
+            location_name = data["location"]["name"] if "location" in data else location
+            weather_desc = current["weather_descriptions"][0]
+            temp = current["temperature"]
+            feelslike = current["feelslike"]
+            humidity = current["humidity"]
+            wind_speed = current.get("wind_speed", "N/A")
+            wind_dir = current.get("wind_dir", "N/A")
+            pressure = current.get("pressure", "N/A")
+            uv_index = current.get("uv_index", "N/A")
+            
             return (
-                f"Weather for {location}: {weather_desc}, {temp}°C "
-                f"(feels like {feelslike}°C), Humidity: {humidity}%"
+                f"🌤️ **Weather for {location_name}**\n"
+                f"🌡️ Temperature: {temp}°C (feels like {feelslike}°C)\n"
+                f"☁️ Conditions: {weather_desc}\n"
+                f"💧 Humidity: {humidity}%\n"
+                f"💨 Wind: {wind_speed} km/h {wind_dir}\n"
+                f"📊 Pressure: {pressure} mb\n"
+                f"☀️ UV Index: {uv_index}\n"
+                f"🕐 Last updated: {current.get('observation_time', 'Recently')}"
             )
         elif "error" in data:
             return f"Error: {data['error'].get('info', 'Unable to fetch weather data.')}"
@@ -232,33 +318,62 @@ def weather_search(location: str) -> str:
 
 def send_email(to: str, subject: str, body: str, meeting_time: str = None, meet_link: str = None) -> str:
     """
-    Send an email with meeting details and a Google Meet link if it's a meeting.
+    Send professional emails with intelligent meeting detection and Google Meet integration.
+    
+    This tool automatically detects meeting requests and generates Google Meet links.
+    It formats emails professionally and logs meeting details for tracking.
 
     Args:
-        to (str): Recipient email.
-        subject (str): Email subject.
-        body (str): Email body.
-        meeting_time (str, optional): Meeting time in readable format.
-        meet_link (str, optional): Google Meet link.
+        to (str): Recipient email address (e.g., "john@example.com")
+        subject (str): Email subject line
+        body (str): Email content/message
+        meeting_time (str, optional): Specific meeting time (e.g., "2:00 PM", "Tomorrow at 3 PM")
+        meet_link (str, optional): Custom Google Meet link (if not provided, will be auto-generated)
 
     Returns:
-        str: Confirmation or error message.
+        str: Confirmation message with meeting details if applicable
+        
+    Usage Examples:
+        - "Send email to sarah@company.com about project update"
+        - "Schedule meeting with team for tomorrow at 2 PM"
+        - "Send follow-up email with meeting link"
     """
     try:
-        # Detect if this is a meeting request by keywords
-        is_meeting = any(word in (subject + body).lower() for word in ["meet", "meeting", "google meet"])
+        # Enhanced meeting detection with more keywords
+        meeting_keywords = ["meet", "meeting", "google meet", "zoom", "call", "conference", "schedule", "appointment", "discuss", "sync"]
+        is_meeting = any(word in (subject + body).lower() for word in meeting_keywords)
+        
         # Try to extract meeting time from body if not provided
         if not meeting_time and is_meeting:
             import re
-            match = re.search(r'(\d{1,2}(:\d{2})?\s*(am|pm))', body, re.IGNORECASE)
-            if match:
-                meeting_time = match.group(0)
+            # More comprehensive time pattern matching
+            time_patterns = [
+                r'(\d{1,2}(:\d{2})?\s*(am|pm))',
+                r'(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)',
+                r'(\d{1,2}:\d{2})',
+                r'(at \d{1,2}(:\d{2})?\s*(am|pm))'
+            ]
+            for pattern in time_patterns:
+                match = re.search(pattern, body, re.IGNORECASE)
+                if match:
+                    meeting_time = match.group(0)
+                    break
+        
         # Always generate a meet link for meetings
         if is_meeting and not meet_link:
             meet_link = generate_google_meet_link()
+            
+        # Enhanced email formatting
         full_body = body
         if is_meeting and meet_link:
-            full_body += f"\n\n📅 Meeting Schedule:\nDate & Time: {meeting_time or 'N/A'}\n\n🔗 Join Google Meet:\n{meet_link}\n"
+            full_body += f"\n\n📅 **Meeting Details:**\n"
+            full_body += f"🕐 Time: {meeting_time or 'To be confirmed'}\n"
+            full_body += f"🔗 Google Meet Link: {meet_link}\n"
+            full_body += f"📧 Meeting ID: {meet_link.split('/')[-1] if '/' in meet_link else 'Generated'}\n"
+            full_body += f"\n💡 **Meeting Tips:**\n"
+            full_body += f"• Join 5 minutes early to test your connection\n"
+            full_body += f"• Ensure you have a stable internet connection\n"
+            full_body += f"• Mute your microphone when not speaking\n"
         send_mail(
             subject,
             full_body,
@@ -267,7 +382,11 @@ def send_email(to: str, subject: str, body: str, meeting_time: str = None, meet_
             fail_silently=False,
         )
         log_meeting(to, subject, meeting_time, meet_link)
-        return f"✅ Email sent to {to} with subject '{subject}' and meeting scheduled at {meeting_time or 'N/A'}"
+        
+        if is_meeting:
+            return f"✅ **Meeting Email Sent Successfully!**\n📧 To: {to}\n📝 Subject: {subject}\n🕐 Meeting Time: {meeting_time or 'To be confirmed'}\n🔗 Meet Link: {meet_link}\n📋 Meeting logged for tracking"
+        else:
+            return f"✅ **Email Sent Successfully!**\n📧 To: {to}\n📝 Subject: {subject}\n📄 Message delivered"
     except Exception as e:
         return f"❌ Failed to send email: {e}"
     
@@ -278,53 +397,85 @@ def log_meeting(to, subject, meeting_time, meet_link):
 
 def wikipedia(query: str) -> str:
     """
-    Search Wikipedia for information related to the given query and return a concise summary.
+    Access comprehensive Wikipedia knowledge for accurate, well-sourced information.
+    
+    This tool searches Wikipedia's vast database to provide detailed, factual information
+    about people, places, events, concepts, and general knowledge topics with proper citations.
 
     Args:
-        query (str): The topic, keyword, or phrase to look up on Wikipedia.
+        query (str): Topic, person, place, concept, or keyword to research
+                   (e.g., "Albert Einstein", "Quantum Computing", "History of India")
 
     Returns:
-        str: A summary or extract of the most relevant Wikipedia article for the query.
-
-    Usage:
-        Use this tool when the user asks for factual, encyclopedic, or background information
-        about people, places, events, concepts, or general knowledge topics.
-        Example queries: "Alan Turing", "Quantum Computing", "History of India"
+        str: Detailed Wikipedia article summary with key facts, dates, and information
+        
+    Usage Examples:
+        - "Tell me about Albert Einstein's contributions to physics"
+        - "What is quantum computing and how does it work?"
+        - "History of the Roman Empire"
+        - "Information about renewable energy sources"
     """
     wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
     return wikipedia.run(query)
 
 def gita_expert(query: str) -> GitaResponse:
     """
-    solve user question and life problems.
-    Bhagavad Gita expert system with intelligent shloka selection.
-    Returns validated structured response using Pydantic.
+    Provide spiritual guidance and life wisdom based on the timeless teachings of the Bhagavad Gita.
+    
+    This expert system analyzes life situations, problems, and questions to provide relevant
+    shlokas (verses) from the Bhagavad Gita along with practical guidance and solutions.
+    Perfect for seeking spiritual wisdom, moral guidance, and life direction.
+
+    Args:
+        query (str): Life question, problem, or situation seeking guidance
+                   (e.g., "I'm feeling stressed about work", "How to deal with failure?", 
+                   "What is the purpose of life?")
+
+    Returns:
+        GitaResponse: Structured response with Sanskrit shloka, transliteration, 
+                     explanation, scenario, and practical solution
+        
+    Usage Examples:
+        - "I'm struggling with anxiety and stress"
+        - "How should I handle difficult relationships?"
+        - "What does the Gita say about success and failure?"
+        - "I need guidance on making important life decisions"
     """
 
     system_prompt = """
-        You are an expert spiritual guide who always gives answers based on the Bhagavad Gita.  
-        When the user asks any question (life problem, confusion, or doubt), you must reply in **pure JSON format** only.  
+        You are a wise spiritual guide deeply versed in the Bhagavad Gita's timeless wisdom.
+        Your role is to provide compassionate guidance by selecting the most relevant shloka
+        for the user's life situation and offering practical, actionable advice.
+        
+        **CRITICAL:** Respond ONLY in valid JSON format. No additional text outside JSON.
 
-        JSON structure must be:
-
+        Required JSON Structure:
         {
-            "shloka": "📖 Original Sanskrit text with reference",
-            "transliteration": "🔤 Romanized transliteration",
-            "explanation": "✨ Explanation in the user's language",
-            "scenario": "🌿 Small relatable story/example from the Gita",
-            "solution": "💡 Practical solution for user's problem"
+            "shloka": "📖 Original Sanskrit verse with chapter and verse reference (e.g., 'Bhagavad Gita 2.47')",
+            "transliteration": "🔤 Romanized Sanskrit text for pronunciation",
+            "explanation": "✨ Clear, compassionate explanation in simple language that directly addresses the user's concern",
+            "scenario": "🌿 A relatable real-life example or story that illustrates the teaching",
+            "solution": "💡 Specific, actionable steps the user can take to apply this wisdom to their situation"
         }
 
-        ⚠️ Rules:
-        - Do not add extra text outside JSON.
-        - Ensure the explanation language matches the user's query language.
-    """
+        **Guidelines:**
+        - Choose shlokas that directly relate to the user's emotional state or life challenge
+        - Make explanations practical and immediately applicable
+        - Use warm, supportive language that provides hope and direction
+        - Ensure the solution offers concrete steps for improvement
+        - Match the language tone to the user's query (formal/informal)
+        """
 
     enhanced_query = f"""
-    User Query: {query}
-
-    Please choose the most relevant Bhagavad Gita shloka 
-    and respond strictly in the above JSON structure.
+    **User's Life Situation:** {query}
+    
+    **Your Task:** 
+    1. Analyze the user's emotional state and life challenge
+    2. Select the most appropriate Bhagavad Gita shloka that addresses their specific concern
+    3. Provide compassionate, practical guidance that offers hope and direction
+    4. Respond in the exact JSON format specified above
+    
+    **Remember:** Your response should feel like wise counsel from a caring spiritual mentor.
     """
 
     messages = [
