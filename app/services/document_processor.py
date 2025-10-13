@@ -128,16 +128,20 @@ class DocumentProcessor:
             raise e
 
     def process_text_with_prompt(self, text: str, prompt_template: str, model: str = "gpt-4o-mini") -> Dict[str, Any]:
-        """Process extracted text using a custom prompt template."""
-        # Replace {text} placeholder in the prompt template with actual text
-        prompt = prompt_template.format(text=text)
-        
+        """Process extracted text using a custom prompt template.
+
+        Important: Only substitute the {text} placeholder to avoid Python str.format
+        attempting to interpret other curly-brace fields in user templates.
+        """
+        # Only replace the specific {text} token without interpreting other braces
+        prompt = prompt_template.replace("{text}", text)
+
         # For very long texts, we might need to chunk them
         max_text_length = 100000  # 100k characters limit for OpenAI
         if len(text) > max_text_length:
             logger.warning(f"Text is very long ({len(text)} chars), truncating to {max_text_length} chars")
-            text = text[:max_text_length] + "\n\n[Text truncated due to length]"
-            prompt = prompt_template.format(text=text)
+            truncated_text = text[:max_text_length] + "\n\n[Text truncated due to length]"
+            prompt = prompt_template.replace("{text}", truncated_text)
         
         # Measure processing time
         start_time = time.time()
