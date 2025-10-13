@@ -156,3 +156,42 @@ class DocumentProcessResponse(BaseModel):
 
 class DocumentUploadRequest(BaseModel):
     prompt_id: str
+
+# Resume module schemas
+class ResumeUploadResponse(BaseModel):
+    id: str
+    original_filename: str
+    file_type: str
+    created_at: datetime
+
+class JobRequirementCreate(BaseModel):
+    title: str
+    description: str | None = None
+    requirement_json: str  # JSON string with criteria, skills, keywords
+    gpt_model: str | None = "gpt-4o-mini"
+
+class JobRequirementUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    requirement_json: str | None = None
+    gpt_model: str | None = None
+    is_active: bool | None = None
+
+class JobRequirementResponse(BaseModel):
+    id: str
+    title: str
+    description: str | None
+    requirement_json: str
+    gpt_model: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+class ResumeMatchResponse(BaseModel):
+    id: str
+    requirement_id: str
+    resume_id: str
+    score: float
+    rationale: str | None
+    match_metadata: str | None
+    created_at: datetime

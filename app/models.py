@@ -26,6 +26,9 @@ class User(Base):
     usage = relationship("UsageTracking", back_populates="user", cascade="all, delete-orphan")
     dynamic_prompts = relationship("DynamicPrompt", cascade="all, delete-orphan")
     processed_documents = relationship("ProcessedDocument", cascade="all, delete-orphan")
+    resumes = relationship("Resume", cascade="all, delete-orphan")
+    job_requirements = relationship("JobRequirement", cascade="all, delete-orphan")
+    resume_matches = relationship("ResumeMatch", cascade="all, delete-orphan")
 
 class OutstandingToken(Base):
     __tablename__ = "outstanding_tokens"
@@ -132,6 +135,10 @@ class UsageTracking(Base):
     
     user = relationship("User", back_populates="usage")
 
+    # Optional counters for resume module (added safely; migrations recommended for production)
+    # These attributes may not exist in the underlying DB if migrations haven't been applied.
+    # Access via getattr/setattr with defaults elsewhere to avoid crashes.
+
 class DynamicPrompt(Base):
     __tablename__ = "dynamic_prompts"
     
@@ -165,3 +172,49 @@ class ProcessedDocument(Base):
     
     user = relationship("User")
     prompt = relationship("DynamicPrompt")
+
+class Resume(Base):
+    __tablename__ = "resumes"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    original_filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    file_type = Column(String)
+    extracted_text = Column(String)
+    parsed_profile = Column(String)  # JSON string with structured resume info
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User")
+
+class JobRequirement(Base):
+    __tablename__ = "job_requirements"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    title = Column(String, nullable=False)
+    description = Column(String)
+    requirement_json = Column(String, nullable=False)  # JSON schema for skills, experience, keywords
+    gpt_model = Column(String, default="gpt-4o-mini")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User")
+
+class ResumeMatch(Base):
+    __tablename__ = "resume_matches"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    requirement_id = Column(String, ForeignKey("job_requirements.id"))
+    resume_id = Column(String, ForeignKey("resumes.id"))
+    score = Column(Float, default=0.0)
+    rationale = Column(String)  # Explanation of the score
+    match_metadata = Column(String)  # JSON with per-criterion scores
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
+    requirement = relationship("JobRequirement")
+    resume = relationship("Resume")

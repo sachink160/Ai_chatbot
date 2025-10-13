@@ -31,6 +31,11 @@ A modular, AI-powered platform for document analysis, HR tools, news summarizati
   - General chat, Google/Wikipedia search, trip planner, weather, YouTube summarizer, email, and more
   - Modular tool system (see `app/Agent/tools.py`)
 
+- **Dynamic Prompts:**
+  - Create reusable prompt templates with optional `gpt_model` selection
+  - Upload documents and process them against an active prompt
+  - Retrieve processed document results
+
 - **News Agent:**
   - Fetches, summarizes, and delivers news headlines by category
   - Sends summaries to WhatsApp and logs to file
@@ -40,6 +45,10 @@ A modular, AI-powered platform for document analysis, HR tools, news summarizati
 
 - **User Auth:**
   - Register, login, refresh, logout (JWT-based)
+
+- **Subscriptions & Usage Limits:**
+  - Plans with monthly limits (chats, documents, HR docs, video uploads, dynamic-prompt docs)
+  - Endpoints to view plans, subscribe/cancel, and check current usage
 
 - **API-first:**
   - RESTful endpoints for all features
@@ -51,6 +60,11 @@ A modular, AI-powered platform for document analysis, HR tools, news summarizati
   - List uploaded and processed files per user
   - Download processed files securely (only the owner can access)
   - Optimized with background thread processing for fast, non-blocking uploads
+
+- **Logging & Monitoring:**
+  - Centralized JSON logging for app, errors, and access
+  - Middleware for request/response timing and global error handling
+  - Endpoints to fetch logs, errors, access logs, and summary analytics
 
 ---
 
@@ -76,6 +90,25 @@ This project includes a robust video-to-audio feature:
 - **Download Processed Files:**
   - Endpoint: `GET /video-to-audio/download/{user_id}/{filename}`
   - Only the authenticated user can download their own processed files
+
+---
+
+## 🧩 Dynamic Prompts Functionality
+
+- **Manage Prompts:**
+  - `POST /dynamic-prompts/` — Create a prompt (name, description, template, optional `gpt_model`)
+  - `GET /dynamic-prompts/` — List prompts (supports deployments without `gpt_model` column)
+  - `GET /dynamic-prompts/{prompt_id}` — Get a prompt
+  - `PUT /dynamic-prompts/{prompt_id}` — Update a prompt
+  - `DELETE /dynamic-prompts/{prompt_id}` — Delete a prompt
+
+- **Process Documents:**
+  - `POST /dynamic-prompts/upload-document` — Upload a document and process with an active prompt
+  - `GET /dynamic-prompts/processed-documents/` — List processed documents
+  - `GET /dynamic-prompts/processed-documents/{document_id}` — Get processed doc metadata
+  - `GET /dynamic-prompts/processed-documents/{document_id}/result` — Get processing result JSON
+
+Limits are enforced via subscription (see below).
 
 ---
 
@@ -154,6 +187,8 @@ $ docker-compose up --build
 - `POST /login` — Login, get JWT tokens
 - `POST /refresh` — Refresh JWT
 - `POST /logout` — Logout, blacklist token
+- `GET /profile` — Get user profile, subscription and usage summary
+- `PUT /profile` — Update profile (fullname, email, phone, password)
 
 #### Document Q&A (RAG)
 - `POST /upload` — Upload document
@@ -183,12 +218,58 @@ $ docker-compose up --build
 - `GET /video-to-audio/processed` — List processed video/audio files (per user)
 - `GET /video-to-audio/download/{user_id}/{filename}` — Download a processed file (user only)
 
+#### Dynamic Prompts
+- `POST /dynamic-prompts/` — Create prompt
+- `GET /dynamic-prompts/` — List prompts
+- `GET /dynamic-prompts/{prompt_id}` — Get prompt
+- `PUT /dynamic-prompts/{prompt_id}` — Update prompt
+- `DELETE /dynamic-prompts/{prompt_id}` — Delete prompt
+- `POST /dynamic-prompts/upload-document` — Upload and process a document with a prompt
+- `GET /dynamic-prompts/processed-documents/` — List processed docs
+- `GET /dynamic-prompts/processed-documents/{document_id}` — Get processed doc
+- `GET /dynamic-prompts/processed-documents/{document_id}/result` — Get processing result
+
+#### Subscriptions & Usage
+- `GET /plans` — List active plans
+- `POST /subscribe` — Subscribe to a plan (simplified)
+- `POST /cancel` — Cancel current subscription
+- `GET /user/subscription` — Current subscription
+- `GET /user/subscription/history` — Subscription history
+- `GET /user/usage` — Current usage and plan limits
+
+#### Logs Management
+- `GET /logs/app` — App logs (filters: lines, level, start_time, end_time)
+- `GET /logs/errors` — Error logs (filters: lines, start_time, end_time)
+- `GET /logs/access` — Access logs (filters: lines, start_time, end_time)
+- `GET /logs/summary` — Summary across logs for last N hours
+- `GET /logs/files` — File sizes and modified times
+- `POST /logs/test` — Emit a test log at a level
+
 ---
 
 ## 🧠 Extending & Customization
 - Add new tools in `app/Agent/tools.py`
 - Add new API endpoints in `app/routes/`
 - Integrate new LLMs or vector DBs as needed
+
+---
+
+## ⚙️ Middleware & Scheduling
+- Logging middleware tracks method, path, user, status, and response time; slow requests (>5s) are flagged
+- Error handling middleware captures context and logs structured errors
+- News agent job is scheduled every 10 hours via APScheduler on app startup
+- CORS is enabled for all origins by default; adjust in `app.main`
+
+---
+
+## 🔐 Environment Variables
+Create a `.env` or provide via environment:
+
+- `DATABASE_URL` — SQLAlchemy connection string
+- `SECRET_KEY` — JWT secret
+- `OPENAI_API_KEY` — For LLM operations (RAG, Dynamic Prompts, Chat)
+
+Optional: tweak limits or plan initialization via service layer.
 
 ---
 

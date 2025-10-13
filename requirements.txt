@@ -33,3 +33,4 @@ redis
 PyMuPDF
 python-docx
 openai
+alembic
