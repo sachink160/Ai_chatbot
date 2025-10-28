@@ -178,6 +178,54 @@ $ docker-compose up --build
 
 ---
 
+## 🗄️ Database Migrations (Alembic)
+
+This project uses Alembic for database schema management. The setup is configured to automatically detect model changes and generate migrations.
+
+### Quick Start
+
+```bash
+# Check current migration status
+alembic current
+
+# Create a new migration from model changes
+alembic revision --autogenerate -m "description of changes"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback last migration
+alembic downgrade -1
+```
+
+### Using the Helper Script
+
+```bash
+# Check status
+python alembic_helpers.py status
+
+# Create and apply migration
+python alembic_helpers.py autogenerate "add new feature"
+python alembic_helpers.py upgrade
+
+# Rollback
+python alembic_helpers.py downgrade -1
+```
+
+### Documentation
+
+- **[ALEMBIC_GUIDE.md](ALEMBIC_GUIDE.md)** - Comprehensive guide to database migrations
+- **[ALEMBIC_QUICK_REF.md](ALEMBIC_QUICK_REF.md)** - Quick reference for common commands
+
+The Alembic setup includes:
+- ✅ Automatic model detection
+- ✅ Database URL from environment variables
+- ✅ Safe migration handling
+- ✅ SQLite and PostgreSQL compatibility
+- ✅ Helper scripts for common tasks
+
+---
+
 ## 🛠️ Usage
 
 ### API Endpoints (Main)

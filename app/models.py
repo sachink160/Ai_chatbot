@@ -29,6 +29,7 @@ class User(Base):
     resumes = relationship("Resume", cascade="all, delete-orphan")
     job_requirements = relationship("JobRequirement", cascade="all, delete-orphan")
     resume_matches = relationship("ResumeMatch", cascade="all, delete-orphan")
+    chat_documents = relationship("ChatDocument", cascade="all, delete-orphan")
 
 class OutstandingToken(Base):
     __tablename__ = "outstanding_tokens"
@@ -218,3 +219,17 @@ class ResumeMatch(Base):
     user = relationship("User")
     requirement = relationship("JobRequirement")
     resume = relationship("Resume")
+
+class ChatDocument(Base):
+    """Documents uploaded specifically for chatbot context"""
+    __tablename__ = "chat_documents"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    filename = Column(String)
+    path = Column(String)
+    is_active = Column(Boolean, default=False)  # Active documents are used in chat
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User")

@@ -195,3 +195,21 @@ class ResumeMatchResponse(BaseModel):
     rationale: str | None
     match_metadata: str | None
     created_at: datetime
+
+# Chat document schemas
+class ChatDocumentUploadResponse(BaseModel):
+    id: str
+    filename: str
+    is_active: bool
+    created_at: datetime
+
+class ChatDocumentResponse(BaseModel):
+    id: str
+    filename: str
+    path: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+class ChatDocumentActivateRequest(BaseModel):
+    document_id: str

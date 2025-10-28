@@ -8,7 +8,7 @@ from typing import List
 from app.auth import get_current_user
 from app.database import get_db
 from app.logger import get_logger
-from app.models import User, Resume, JobRequirement
+from app.models import User, Resume, JobRequirement, ResumeMatch
 from app.schemas import (
     ResumeUploadResponse,
     JobRequirementCreate,

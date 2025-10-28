@@ -34,6 +34,13 @@ def get_storage_path(user_id: int, document_id: int) -> str:
     logger.debug(f"Generated storage path: {path}")
     return path
 
+def get_chat_storage_path(user_id: int, document_id: str) -> str:
+    """Get storage path for chat documents"""
+    path = os.path.join(INDEX_BASE_DIR, f"user_{user_id}", f"chat_doc_{document_id}")
+    os.makedirs(path, exist_ok=True)
+    logger.debug(f"Generated chat storage path: {path}")
+    return path
+
 
 def load_or_create_index(filepath: str, user_id: int, document_id: int) -> VectorStoreIndex:
     storage_dir = get_storage_path(user_id, document_id)
@@ -55,6 +62,28 @@ def load_or_create_index(filepath: str, user_id: int, document_id: int) -> Vecto
     index = VectorStoreIndex.from_documents(documents, llm=llama_llm)
     index.storage_context.persist(persist_dir=storage_dir)
     logger.info(f"Created and persisted new index for user {user_id}, doc {document_id}")
+    return index
+
+def load_or_create_chat_index(filepath: str, user_id: int, document_id: str) -> VectorStoreIndex:
+    """Load or create index for chat documents"""
+    storage_dir = get_chat_storage_path(user_id, document_id)
+
+    chat_llm = ChatOpenAI(
+        model_name="gpt-3.5-turbo",
+        temperature=0,
+        max_tokens=1024
+    )
+    llama_llm = LangChainLLM(llm=chat_llm)
+
+    if os.path.exists(storage_dir) and os.listdir(storage_dir):
+        storage_context = StorageContext.from_defaults(persist_dir=storage_dir)
+        logger.info(f"Loading chat index from storage for user {user_id}, doc {document_id}")
+        return load_index_from_storage(storage_context, llm=llama_llm)
+
+    documents = SimpleDirectoryReader(input_files=[filepath]).load_data()
+    index = VectorStoreIndex.from_documents(documents, llm=llama_llm)
+    index.storage_context.persist(persist_dir=storage_dir)
+    logger.info(f"Created and persisted new chat index for user {user_id}, doc {document_id}")
     return index
 
 

@@ -12,8 +12,8 @@ import sqlalchemy as sa
 # revision identifiers, used by Alembic.
 revision = '5bc86fd614bc'
 down_revision = '000000000000'
-branch_labels = 'None'
-depends_on = 'None'
+branch_labels = None
+depends_on = None
 
 
 def upgrade() -> None:
