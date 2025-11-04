@@ -9,6 +9,11 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+# Pinecone Configuration
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")  # Default to us-east-1-aws
+PINECONE_INDEX_NAME_PREFIX = os.getenv("PINECONE_INDEX_NAME_PREFIX", "rag")
+
 # Debug print to verify DATABASE_URL
 print(f"DATABASE_URL being used: {DATABASE_URL}")
 ALGORITHM = "HS256"

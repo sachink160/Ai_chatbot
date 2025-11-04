@@ -165,7 +165,7 @@ def ask_question(
         # Build the prompt
         prompt = build_prompt(getattr(body, "prompt_type", "summarize"), getattr(body, "custom_query", ""))
         
-        chat_llm = ChatOpenAI(model="gpt-4o", temperature=0, max_tokens=1024)
+        chat_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=1024)
         # chat_llm = ChatOllama(model="llama3", temperature=0.7)
         llama_llm = LangChainLLM(llm=chat_llm)
         # Combine prompt and user question if both are present

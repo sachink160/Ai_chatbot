@@ -2,8 +2,8 @@ from typing import List, Dict, Any
 import os
 import json
 import base64
-import fitz
-from docx import Document as DocxDocument
+import fitz # type: ignore
+from docx import Document as DocxDocument # type: ignore
 from sqlalchemy.orm import Session
 from openai import OpenAI
 

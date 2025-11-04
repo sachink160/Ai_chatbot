@@ -71,9 +71,9 @@ async def chat(
                 # Enhance the query with document context
                 final_query = f"""I have uploaded a document. Here's what it says about your question:
                 
-{document_context}
+                {document_context}
 
-Now, based on this context from my document AND using your tools, please answer: {query}"""
+                Now, based on this context from my document AND using your tools, please answer: {query}"""
                 
                 logger.info(f"Enhanced query with document context for user {current_user.id}")
                 
