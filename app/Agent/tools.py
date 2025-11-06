@@ -140,8 +140,7 @@ total_tool = [weather_search, google_search, wikipedia]
 tool_node = ToolNode(total_tool)
 # model = init_chat_model(model="openai:gpt-3.5-turbo")
 model_4o = init_chat_model(model="openai:gpt-4o-mini")
-# model = init_chat_model(model="openai:gpt-4o")
-# model_with_tools = model.bind_tools(total_tool)
+
 model_with_tools = model_4o.bind_tools(total_tool)
 
 def should_continue(state: MessagesState):

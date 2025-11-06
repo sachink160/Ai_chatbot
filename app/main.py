@@ -4,8 +4,8 @@ from app.database import Base, engine
 from app.auth import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.schedulers.asyncio import AsyncIOScheduler # type: ignore
+from apscheduler.triggers.interval import IntervalTrigger # type: ignore
 
 from app.Agent.news import run_news_agent
 from app.logger import get_logger

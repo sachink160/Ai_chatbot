@@ -1,10 +1,10 @@
-import fitz  # PyMuPDF (for PDFs)
+import fitz  # type: ignore # PyMuPDF (for PDFs)
 from openai import OpenAI
 import json
 import os
 import base64
 import time
-from docx import Document
+from docx import Document # type: ignore
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from app.models import DynamicPrompt, ProcessedDocument

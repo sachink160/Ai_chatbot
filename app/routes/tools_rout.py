@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import ToolMessage
 from uuid import uuid4
-from llama_index.llms.langchain import LangChainLLM
-from llama_index.core import StorageContext
+from llama_index.llms.langchain import LangChainLLM # type: ignore
+from llama_index.core import StorageContext # type: ignore
 
 from app.Agent.tools import graph
 from datetime import datetime, timezone

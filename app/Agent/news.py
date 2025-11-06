@@ -1,9 +1,9 @@
 from datetime import datetime
 from langgraph.graph import StateGraph, END
 # from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama
+from langchain_ollama import ChatOllama # type: ignore
 from langchain.prompts import PromptTemplate
-from twilio.rest import Client
+from twilio.rest import Client # type: ignore
 import requests
 import os
 from dotenv import load_dotenv
