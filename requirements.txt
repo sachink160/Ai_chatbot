@@ -36,3 +36,4 @@ PyMuPDF
 python-docx
 openai
 alembic
+huggingface_hub

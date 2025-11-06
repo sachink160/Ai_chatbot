@@ -38,6 +38,26 @@ class OutstandingToken(Base):
     token_type = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     user = relationship("User")
+ 
+class ImageGeneration(Base):
+    __tablename__ = "image_generations"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"))
+    prompt = Column(String)
+    negative_prompt = Column(String)
+    model = Column(String, default="black-forest-labs/FLUX.1-dev")
+    guidance_scale = Column(Float, default=7.5)
+    num_inference_steps = Column(Integer, default=50)
+    width = Column(Integer, default=1024)
+    height = Column(Integer, default=1024)
+    seed = Column(String, nullable=True)
+    output_path = Column(String)
+    status = Column(String, default="completed")  # completed, failed
+    error_message = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User")
 
 class BlacklistToken(Base):
     __tablename__ = "blacklist_tokens"
