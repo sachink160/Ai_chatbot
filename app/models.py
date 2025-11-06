@@ -29,7 +29,8 @@ class User(Base):
     resumes = relationship("Resume", cascade="all, delete-orphan")
     job_requirements = relationship("JobRequirement", cascade="all, delete-orphan")
     resume_matches = relationship("ResumeMatch", cascade="all, delete-orphan")
-    chat_documents = relationship("ChatDocument", cascade="all, delete-orphan")
+    chat_documents = relationship("ChatDocument", back_populates="user", cascade="all, delete-orphan")
+    master_settings = relationship("MasterSettings", back_populates="user", cascade="all, delete-orphan")
 
 class OutstandingToken(Base):
     __tablename__ = "outstanding_tokens"
@@ -121,6 +122,7 @@ class SubscriptionPlan(Base):
     max_hr_documents = Column(Integer)
     max_video_uploads = Column(Integer)
     max_dynamic_prompt_documents = Column(Integer, default=5)  # Default 5 documents for dynamic prompts
+    max_ai_images_per_month = Column(Integer, default=3)  # Default 3 images per month
     features = Column(String)  # JSON string of features
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -151,6 +153,7 @@ class UsageTracking(Base):
     hr_documents_uploaded = Column(Integer, default=0)
     video_uploads = Column(Integer, default=0)
     dynamic_prompt_documents_uploaded = Column(Integer, default=0)  # Track dynamic prompt document uploads
+    ai_images_generated = Column(Integer, default=0)  # Track AI image generations
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -252,4 +255,18 @@ class ChatDocument(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    user = relationship("User")
+    user = relationship("User", back_populates="chat_documents")
+
+class MasterSettings(Base):
+    """Master settings model to store user-specific API keys and configuration"""
+    __tablename__ = "master_settings"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    name = Column(String, nullable=False, index=True)  # API key name (e.g., "OPENAI_API_KEY", "HF_TOKEN")
+    value = Column(String, nullable=True)  # API key value
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = relationship("User", back_populates="master_settings")

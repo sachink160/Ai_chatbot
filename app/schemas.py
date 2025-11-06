@@ -91,6 +91,29 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
 
 
+# MasterSettings schemas
+class MasterSettingsCreate(BaseModel):
+    name: str
+    value: str
+    is_active: Optional[bool] = True
+
+class MasterSettingsUpdate(BaseModel):
+    value: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class MasterSettingsResponse(BaseModel):
+    id: str
+    user_id: str
+    name: str
+    value: Optional[str]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
 class DocUploadResponse(BaseModel):
     doc_id: int
     filename: str

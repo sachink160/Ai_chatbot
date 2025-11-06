@@ -9,23 +9,27 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.logger import get_logger
+from app.settings_service import SettingsService
+from app.subscription_service import SubscriptionService
 
 logger = get_logger(__name__)
 
 
 DEFAULT_MODEL = "black-forest-labs/FLUX.1-dev"
-DEFAULT_LIMIT_PER_MONTH = 3  # Free/default quota
+DEFAULT_LIMIT_PER_MONTH = 3  # Free/default quota (fallback)
 
 
-def _get_hf_token() -> str:
-    token = os.getenv("HF_TOKEN")
+def _get_hf_token(user_id: Optional[str] = None, db: Optional[Session] = None) -> str:
+    """Get HF token from user settings (DB) or fallback to .env"""
+    token = SettingsService.get_hf_token(user_id, db)
     if not token:
-        raise ValueError("HF_TOKEN environment variable is not set.")
+        raise ValueError("HF_TOKEN not found in user settings or environment variables.")
     return token
 
 
-def _get_client() -> InferenceClient:
-    return InferenceClient(provider="nebius", api_key=_get_hf_token())
+def _get_client(user_id: Optional[str] = None, db: Optional[Session] = None) -> InferenceClient:
+    """Get InferenceClient with user-specific API key or fallback to .env"""
+    return InferenceClient(provider="nebius", api_key=_get_hf_token(user_id, db))
 
 
 def get_user_image_month_count(user_id: str, db: Session) -> int:
@@ -42,15 +46,26 @@ def get_user_image_month_count(user_id: str, db: Session) -> int:
 
 
 def can_generate_image(user: models.User, db: Session) -> Tuple[bool, int, int, int]:
-    """Return (can_use, used, max_allowed, remaining). Default max is 3 per month.
-
-    If subscription plans later add image quotas, this function can be extended
-    to read from plan features.
+    """Return (can_use, used, max_allowed, remaining).
+    
+    Uses subscription service to get limits based on user's subscription plan.
+    Falls back to DEFAULT_LIMIT_PER_MONTH if subscription service is unavailable.
     """
-    used = get_user_image_month_count(user.id, db)
-    max_allowed = DEFAULT_LIMIT_PER_MONTH
-    remaining = max(0, max_allowed - used)
-    return (used < max_allowed, used, max_allowed, remaining)
+    try:
+        # Use subscription service to get limits
+        subscription_info = SubscriptionService.can_generate_ai_image(user, db)
+        used = subscription_info["ai_images_generated"]
+        max_allowed = subscription_info["max_ai_images"]
+        remaining = subscription_info["remaining"]
+        can_use = subscription_info["can_use"]
+        return (can_use, used, max_allowed, remaining)
+    except Exception as e:
+        logger.warning(f"Failed to get subscription limits, using fallback: {e}")
+        # Fallback to counting from database
+        used = get_user_image_month_count(user.id, db)
+        max_allowed = DEFAULT_LIMIT_PER_MONTH
+        remaining = max(0, max_allowed - used)
+        return (used < max_allowed, used, max_allowed, remaining)
 
 
 def ensure_user_output_dir(base_dir: str, user_id: str) -> str:
@@ -86,7 +101,7 @@ def generate_image(
             f"Image generation limit reached. Used {used}/{max_allowed} this month."
         )
 
-    client = _get_client()
+    client = _get_client(user.id, db)
 
     try:
         response = client.text_to_image(
@@ -123,6 +138,13 @@ def generate_image(
         db.add(record)
         db.commit()
         db.refresh(record)
+        
+        # Increment usage tracking via subscription service
+        try:
+            SubscriptionService.increment_ai_image_usage(user, db)
+        except Exception as e:
+            logger.warning(f"Failed to increment AI image usage: {e}")
+        
         return record
     except Exception as e:
         logger.error(f"Image generation failed: {e}")

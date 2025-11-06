@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from app.routes import user_routes, rag_rout, tools_rout, hr_rout, video_to_audio_rout, subscription_rout, dynamic_prompt_routes, logs_routes, crm_routes, resume_routes
-from app.routes import image_routes
+from app.routes import image_routes, master_settings_routes
 from app.database import Base, engine
 from app.auth import get_current_user
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,6 +63,7 @@ app.include_router(logs_routes.router)
 app.include_router(crm_routes.router)
 app.include_router(resume_routes.router)
 app.include_router(image_routes.router)
+app.include_router(master_settings_routes.router)
 # app.include_router(social_media_rout.router)
 
 

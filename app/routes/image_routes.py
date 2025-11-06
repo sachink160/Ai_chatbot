@@ -10,6 +10,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app import models
 from app.services.image_generation import generate_image, can_generate_image, ensure_user_output_dir
+from app.subscription_service import SubscriptionService
 
 router = APIRouter(tags=["AI Images"])
 
@@ -38,6 +39,13 @@ class ImageRecordResponse(BaseModel):
     output_path: str
     status: str
     error_message: Optional[str]
+
+
+class ImageSubscriptionInfoResponse(BaseModel):
+    can_use: bool
+    ai_images_generated: int
+    max_ai_images: int
+    remaining: int
 
 
 @router.post("/ai/images/generate", response_model=ImageRecordResponse)
@@ -109,6 +117,21 @@ def list_images(
         )
         for r in records
     ]
+
+
+@router.get("/ai/images/subscription", response_model=ImageSubscriptionInfoResponse)
+def get_image_subscription_info(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get AI image subscription and usage information for the current user"""
+    subscription_info = SubscriptionService.can_generate_ai_image(current_user, db)
+    return ImageSubscriptionInfoResponse(
+        can_use=subscription_info["can_use"],
+        ai_images_generated=subscription_info["ai_images_generated"],
+        max_ai_images=subscription_info["max_ai_images"],
+        remaining=subscription_info["remaining"]
+    )
 
 
 @router.get("/ai/images/{image_id}/download")

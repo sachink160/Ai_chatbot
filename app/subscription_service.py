@@ -17,7 +17,8 @@ class SubscriptionService:
             "max_documents": 2,
             "max_hr_documents": 2,
             "max_video_uploads": 1,
-            "max_dynamic_prompt_documents": 5  # Default 5 documents for dynamic prompts
+            "max_dynamic_prompt_documents": 5,  # Default 5 documents for dynamic prompts
+            "max_ai_images_per_month": 3  # Default 3 images per month for free tier
         }
     
     @staticmethod
@@ -39,7 +40,8 @@ class SubscriptionService:
                         "max_documents": plan.max_documents,
                         "max_hr_documents": plan.max_hr_documents,
                         "max_video_uploads": plan.max_video_uploads,
-                        "max_dynamic_prompt_documents": getattr(plan, 'max_dynamic_prompt_documents', 5)
+                        "max_dynamic_prompt_documents": getattr(plan, 'max_dynamic_prompt_documents', 5),
+                        "max_ai_images_per_month": getattr(plan, 'max_ai_images_per_month', 3)
                     }
         
         # Return free tier limits
@@ -159,6 +161,36 @@ class SubscriptionService:
         logger.info(f"Incremented video usage for user {user.id}")
     
     @staticmethod
+    def can_generate_ai_image(user: models.User, db: Session) -> Dict[str, Any]:
+        """Check if user can generate AI image"""
+        limits = SubscriptionService.get_user_limits(user, db)
+        usage = SubscriptionService.get_current_usage(user, db)
+        
+        ai_images_generated = getattr(usage, 'ai_images_generated', 0)
+        max_ai_images = limits.get("max_ai_images_per_month", 3)
+        
+        can_use = ai_images_generated < max_ai_images
+        
+        return {
+            "can_use": can_use,
+            "ai_images_generated": ai_images_generated,
+            "max_ai_images": max_ai_images,
+            "remaining": max(0, max_ai_images - ai_images_generated)
+        }
+    
+    @staticmethod
+    def increment_ai_image_usage(user: models.User, db: Session):
+        """Increment AI image usage for current month"""
+        usage = SubscriptionService.get_current_usage(user, db)
+        if hasattr(usage, 'ai_images_generated'):
+            usage.ai_images_generated += 1
+        else:
+            # If column doesn't exist yet, set it to 1
+            setattr(usage, 'ai_images_generated', 1)
+        db.commit()
+        logger.info(f"Incremented AI image usage for user {user.id}")
+    
+    @staticmethod
     def can_upload_dynamic_prompt_document(user: models.User, db: Session) -> Dict[str, Any]:
         """Check if user can upload dynamic prompt document"""
         limits = SubscriptionService.get_user_limits(user, db)
@@ -201,12 +233,14 @@ class SubscriptionService:
                 "max_hr_documents": 20,
                 "max_video_uploads": 10,
                 "max_dynamic_prompt_documents": 10,
+                "max_ai_images_per_month": 20,
                 "features": json.dumps([
                     "100 AI chats per month",
                     "20 document uploads",
                     "20 HR document uploads",
                     "10 video uploads",
                     "10 dynamic prompt document uploads",
+                    "20 AI images per month",
                     "Priority support"
                 ])
             },
@@ -219,12 +253,14 @@ class SubscriptionService:
                 "max_hr_documents": 100,
                 "max_video_uploads": 50,
                 "max_dynamic_prompt_documents": 50,
+                "max_ai_images_per_month": 100,
                 "features": json.dumps([
                     "500 AI chats per month",
                     "100 document uploads",
                     "100 HR document uploads",
                     "50 video uploads",
                     "50 dynamic prompt document uploads",
+                    "100 AI images per month",
                     "Advanced analytics",
                     "Priority support",
                     "Custom integrations"
@@ -239,12 +275,14 @@ class SubscriptionService:
                 "max_hr_documents": 500,
                 "max_video_uploads": 200,
                 "max_dynamic_prompt_documents": 200,
+                "max_ai_images_per_month": 500,
                 "features": json.dumps([
                     "2000 AI chats per month",
                     "500 document uploads",
                     "500 HR document uploads",
                     "200 video uploads",
                     "200 dynamic prompt document uploads",
+                    "500 AI images per month",
                     "Advanced analytics",
                     "Priority support",
                     "Custom integrations",
@@ -282,7 +320,8 @@ class SubscriptionService:
                 "documents_uploaded": usage.documents_uploaded,
                 "hr_documents_uploaded": usage.hr_documents_uploaded,
                 "video_uploads": usage.video_uploads,
-                "dynamic_prompt_documents_uploaded": getattr(usage, 'dynamic_prompt_documents_uploaded', 0)
+                "dynamic_prompt_documents_uploaded": getattr(usage, 'dynamic_prompt_documents_uploaded', 0),
+                "ai_images_generated": getattr(usage, 'ai_images_generated', 0)
             },
             "limits": limits,
             "remaining": {
@@ -290,7 +329,8 @@ class SubscriptionService:
                 "documents": max(0, limits["max_documents"] - usage.documents_uploaded),
                 "hr_documents": max(0, limits["max_hr_documents"] - usage.hr_documents_uploaded),
                 "video_uploads": max(0, limits["max_video_uploads"] - usage.video_uploads),
-                "dynamic_prompt_documents": max(0, limits.get("max_dynamic_prompt_documents", 5) - getattr(usage, 'dynamic_prompt_documents_uploaded', 0))
+                "dynamic_prompt_documents": max(0, limits.get("max_dynamic_prompt_documents", 5) - getattr(usage, 'dynamic_prompt_documents_uploaded', 0)),
+                "ai_images": max(0, limits.get("max_ai_images_per_month", 3) - getattr(usage, 'ai_images_generated', 0))
             }
         }
         

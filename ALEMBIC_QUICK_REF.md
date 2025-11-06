@@ -4,9 +4,9 @@
 
 ### Check Status
 ```bash
-alembic current     # Current revision
+alembic current     # Current *revision*
 alembic heads       # Show all heads
-alembic history     # Show full history
+alembic history     # Show full *history*
 ```
 
 ### Create Migration

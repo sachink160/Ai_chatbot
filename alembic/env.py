@@ -38,7 +38,9 @@ from app.models import (
     Resume,
     JobRequirement,
     ResumeMatch,
-    ChatDocument
+    ChatDocument,
+    ImageGeneration,
+    MasterSettings
 )
 
 # Set target metadata for 'autogenerate'
