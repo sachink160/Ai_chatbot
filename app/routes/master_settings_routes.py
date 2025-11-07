@@ -278,3 +278,4 @@ def activate_setting(
             detail=f"Failed to activate setting: {str(e)}"
         )
 
+
